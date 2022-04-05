@@ -1,0 +1,6 @@
+[submodule "htslib"]
+	path = htslib
+	url = https://github.com/samtools/htslib.git
+[submodule "klib"]
+	path = klib
+	url = https://github.com/attractivechaos/klib.git
