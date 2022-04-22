@@ -1,0 +1,396 @@
+make all --print-data-base --no-builtin-variables --no-builtin-rules --question
+# GNU Make 4.1
+# Built for x86_64-pc-linux-gnu
+# Copyright (C) 1988-2014 Free Software Foundation, Inc.
+# License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+# This is free software: you are free to change and redistribute it.
+# There is NO WARRANTY, to the extent permitted by law.
+
+# Make data base, printed on Wed Apr 20 10:57:17 2022
+
+# Variables
+
+# 'override' directive
+GNUMAKEFLAGS := 
+# automatic
+<D = $(patsubst %/,%,$(dir $<))
+# automatic
+?F = $(notdir $?)
+# environment
+CONDA_TOOLCHAIN_BUILD = x86_64-conda-linux-gnu
+# environment
+STRINGS = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-strings
+# default
+.SHELLFLAGS := -c
+# environment
+GPROF = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gprof
+# environment
+VSCODE_AGENT_FOLDER = /home/kpalin/.vscode-server
+# environment
+VSCODE_LOG_NATIVE = false
+# environment
+OBJCOPY = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-objcopy
+# environment
+CPPFLAGS = -DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /scratch/kpalin/miniconda3/include
+# automatic
+@D = $(patsubst %/,%,$(dir $@))
+# automatic
+@F = $(notdir $@)
+# default
+MAKE_VERSION := 4.1
+# makefile
+CURDIR := /home/kpalin/software/bam_to_mods
+# environment
+CXX = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-c++
+# makefile
+SHELL = /bin/sh
+# environment
+NM = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-nm
+# environment
+VSCODE_NLS_CONFIG = {"locale":"en","availableLanguages":{}}
+# environment
+_ = /scratch/kpalin/.vscode-server/bin/dfd34e8260c270da74b5c2d86d61aee4b6d56977/node
+# environment
+CFLAGS = -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include
+# automatic
+?D = $(patsubst %/,%,$(dir $?))
+# makefile (from 'Makefile', line 1)
+MAKEFILE_LIST :=  Makefile
+# environment
+ASPERA_CONNECT_DIR = /home/kpalin/.aspera/connect
+# environment
+JAVA_HOME_CONDA_BACKUP = 
+# environment
+GCC = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gcc
+# environment
+GCC_NM = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gcc-nm
+# environment
+CXXFLAGS = -fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include
+# environment
+ADDR2LINE = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-addr2line
+# environment
+VSCODE_VERBOSE_LOGGING = true
+# environment
+CC = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-cc
+# environment
+CXX_FOR_BUILD = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-c++
+# environment
+REF_PATH = /mnt/cg8/reference-genomes/GRCh38_no_alt/GRCh38_no_alt.fasta
+# environment
+_CONDA_PYTHON_SYSCONFIGDATA_NAME = _sysconfigdata_x86_64_conda_cos6_linux_gnu
+# environment
+LESSOPEN = | /usr/bin/lesspipe %s
+# environment
+CPP = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-cpp
+# environment
+VSCODE_CWD = /home/kpalin
+# environment
+GSETTINGS_SCHEMA_DIR = /scratch/kpalin/miniconda3/share/glib-2.0/schemas
+# environment
+ELFEDIT = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-elfedit
+# environment
+SSH_CONNECTION = 128.214.8.3 40074 128.214.145.22 22
+# environment
+PATH = /scratch/kpalin/.vscode-server/bin/dfd34e8260c270da74b5c2d86d61aee4b6d56977/bin/remote-cli:/home/kpalin/.cargo/bin:/scratch/kpalin/miniconda3/bin:/scratch/kpalin/miniconda3/condabin:/home/kpalin/.aspera/connect/bin:/home/kpalin/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+# environment
+LD = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-ld
+# environment
+XDG_RUNTIME_DIR = /run/user/1094701
+# environment
+JAVA_LD_LIBRARY_PATH_BACKUP = 
+# environment
+LD_GOLD = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-ld.gold
+# environment
+REF_CACHE = /home/kpalin/.cache/hts-ref/
+# environment
+CONDA_PREFIX = /scratch/kpalin/miniconda3
+# environment
+AR = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-ar
+# environment
+VSCODE_LOG_STACK = false
+# environment
+LDFLAGS = -Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,-rpath,/scratch/kpalin/miniconda3/lib -Wl,-rpath-link,/scratch/kpalin/miniconda3/lib -L/scratch/kpalin/miniconda3/lib
+# default
+.FEATURES := target-specific order-only second-expansion else-if shortest-stem undefine oneshell archives jobserver output-sync check-symlink load
+# environment
+CMAKE_PREFIX_PATH = /scratch/kpalin/miniconda3:/scratch/kpalin/miniconda3/x86_64-conda-linux-gnu/sysroot/usr
+# environment
+LS_COLORS = 
+# environment
+SSH_AUTH_SOCK = /run/user/1094701/vscode-ssh-auth-sock-606830465
+# environment
+SIZE = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-size
+# automatic
+%F = $(notdir $%)
+# environment
+DISPLAY = localhost:11.0
+# environment
+CONDA_EXE = /scratch/kpalin/miniconda3/bin/conda
+# environment
+HISTFILESIZE = 10000000
+# environment
+VSCODE_PIPE_LOGGING = true
+# environment
+PWD = /home/kpalin/software/bam_to_mods
+# environment
+VSCODE_IPC_HOOK_CLI = /run/user/1094701/vscode-ipc-9600b0ae-8934-4c19-bd8c-08b1b3bf580f.sock
+# automatic
+*D = $(patsubst %/,%,$(dir $*))
+# environment
+RANLIB = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-ranlib
+# environment
+HISTTIMEFORMAT = %F %T 
+# environment
+VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
+# environment
+HOME = /home/kpalin
+# environment
+LESSCLOSE = /usr/bin/lesspipe %s %s
+# environment
+LOGNAME = kpalin
+# environment
+APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = true
+# environment
+CONDA_PROMPT_MODIFIER = (base) 
+# environment
+build_alias = x86_64-conda-linux-gnu
+# automatic
++F = $(notdir $+)
+# environment
+CXXFILT = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-c++filt
+# environment
+VSCODE_HANDLES_UNCAUGHT_ERRORS = true
+# automatic
+^D = $(patsubst %/,%,$(dir $^))
+# environment
+MAKELEVEL := 0
+# environment
+CONDA_DEFAULT_ENV = base
+# default
+MAKE = $(MAKE_COMMAND)
+# default
+MAKECMDGOALS := all
+# environment
+CONDA_TOOLCHAIN_HOST = x86_64-conda-linux-gnu
+# environment
+SHLVL = 4
+# environment
+AS = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-as
+# environment
+GCC_AR = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gcc-ar
+# environment
+JAVA_HOME = /scratch/kpalin/miniconda3
+# environment
+OMP_NUM_THREADS = 4
+# environment
+XDG_SESSION_ID = 7
+# environment
+USER = kpalin
+# makefile
+.DEFAULT_GOAL := all
+# environment
+CONDA_BUILD_SYSROOT = /scratch/kpalin/miniconda3/x86_64-conda-linux-gnu/sysroot
+# automatic
+%D = $(patsubst %/,%,$(dir $%))
+# environment
+READELF = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-readelf
+# environment
+CONDA_SHLVL = 1
+# default
+MAKE_COMMAND := make
+# default
+.VARIABLES := 
+# environment
+TMPDIR = /scratch/kpalin/tmp/
+# automatic
+*F = $(notdir $*)
+# environment
+LANGUAGE = en_US:en
+# makefile
+MAKEFLAGS = pqrR
+# environment
+MFLAGS = -pqrR
+# environment
+SSH_CLIENT = 128.214.8.3 40074 22
+# environment
+LOCATE_PATH = /mnt/cg1/mlocate.cg.db:/mnt/cg10/mlocate.cg.db:/mnt/cg38/mlocate.cg38.db:/mnt/cgnano/mlocate.cgnano.db:/mnt/cg1/mlocate.gsb-fileserv-aaltonen.db
+# environment
+MAIL = /var/mail/kpalin
+# automatic
++D = $(patsubst %/,%,$(dir $+))
+# environment
+OBJDUMP = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-objdump
+# environment
+BROWSER = /scratch/kpalin/.vscode-server/bin/dfd34e8260c270da74b5c2d86d61aee4b6d56977/bin/helpers/browser.sh
+# environment
+GSETTINGS_SCHEMA_DIR_CONDA_BACKUP = 
+# environment
+S_COLORS = auto
+# environment
+STRIP = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-strip
+# default
+MAKEFILES := 
+# environment
+BUILD = x86_64-conda-linux-gnu
+# automatic
+<F = $(notdir $<)
+# environment
+CMAKE_ARGS = -DCMAKE_AR=/scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-strip
+# environment
+GXX = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-g++
+# environment
+LC_ALL = C
+# environment
+JAVA_LD_LIBRARY_PATH = /scratch/kpalin/miniconda3/lib/server
+# environment
+CONDA_PYTHON_EXE = /scratch/kpalin/miniconda3/bin/python
+# environment
+DEBUG_CPPFLAGS = -D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /scratch/kpalin/miniconda3/include
+# automatic
+^F = $(notdir $^)
+# default
+SUFFIXES := 
+# environment
+HISTSIZE = 100000
+# environment
+_CE_M = 
+# environment
+DEBUG_CFLAGS = -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include
+# environment
+host_alias = x86_64-conda-linux-gnu
+# default
+.INCLUDE_DIRS = /usr/include /usr/local/include /usr/include
+# default
+.RECIPEPREFIX := 
+# default
+MAKE_HOST := x86_64-pc-linux-gnu
+# environment
+CC_FOR_BUILD = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-cc
+# environment
+GCC_RANLIB = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gcc-ranlib
+# environment
+LANG = C
+# environment
+VSCODE_EXTHOST_WILL_SEND_SOCKET = true
+# environment
+DEBUG_CXXFLAGS = -fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include
+# environment
+_CE_CONDA = 
+# environment
+HOST = x86_64-conda-linux-gnu
+ 
+# variable set hash-table stats:
+# Load=134/1024=13%, Rehash=0, Collisions=19/165=12%
+
+# Pattern-specific Variable Values
+
+# No pattern-specific variable values.
+
+# Directories
+
+# . (device 52, inode -9178197162812555364): 14 files, no impossibilities.
+
+# 14 files, no impossibilities in 1 directories.
+
+# Implicit Rules
+
+# No implicit rules.
+
+# Files
+
+all: bam_to_mods
+#  Command line target.
+#  Implicit rule search has been done.
+#  File does not exist.
+#  File has been updated.
+#  Needs to be updated (-q is set).
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/6=0%
+
+obj/bam_mods_to_text.o: src/bam_mods_to_text.cpp
+#  Implicit rule search has not been done.
+#  Implicit/static pattern stem: ''
+#  Last modified 2022-04-19 16:35:37.648836
+#  File has been updated.
+#  Needs to be updated (-q is set).
+# automatic
+# @ := obj/bam_mods_to_text.o
+# automatic
+# % := 
+# automatic
+# * := 
+# automatic
+# + := src/bam_mods_to_text.cpp
+# automatic
+# | := 
+# automatic
+# < := src/bam_mods_to_text.cpp
+# automatic
+# ^ := src/bam_mods_to_text.cpp
+# automatic
+# ? := src/bam_mods_to_text.cpp
+# variable set hash-table stats:
+# Load=8/32=25%, Rehash=0, Collisions=1/16=6%
+#  recipe to execute (from 'Makefile', line 9):
+	$(CXX) -c -g -o $@ $^  -lhts ${CFLAGS} $(LIBS) -lpthread 
+
+# Not a target:
+.SUFFIXES:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+Makefile:
+#  Implicit rule search has been done.
+#  Last modified 2022-04-19 15:02:00.502254
+#  File has been updated.
+#  Successfully updated.
+
+bam_to_mods: obj/bam_mods_to_text.o
+#  Implicit rule search has not been done.
+#  Last modified 2022-04-19 16:35:37.782709
+#  File has been updated.
+#  Needs to be updated (-q is set).
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/6=0%
+#  recipe to execute (from 'Makefile', line 5):
+	$(CXX) -g -o $@ obj/bam_mods_to_text.o  -lhts $(CFLAGS) $(LDFLAGS)  $(LIBS) -lpthread
+
+# Not a target:
+.DEFAULT:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+src/bam_mods_to_text.cpp:
+#  Implicit rule search has been done.
+#  Last modified 2022-04-20 09:02:50.435221
+#  File has been updated.
+#  Successfully updated.
+
+clean:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'Makefile', line 12):
+	rm obj/bam_mods_to_text.o bam_to_mods
+
+# files hash-table stats:
+# Load=8/1024=1%, Rehash=0, Collisions=0/25=0%
+# VPATH Search Paths
+
+# No 'vpath' search paths.
+
+# No general ('VPATH' variable) search path.
+
+# strcache buffers: 1 (0) / strings = 22 / storage = 216 B / avg = 9 B
+# current buf: size = 8162 B / used = 216 B / count = 22 / avg = 9 B
+
+# strcache performance: lookups = 35 / hit rate = 37%
+# hash-table stats:
+# Load=22/8192=0%, Rehash=0, Collisions=1/35=3%
+# Finished Make data base on Wed Apr 20 10:57:17 2022
+
+ 

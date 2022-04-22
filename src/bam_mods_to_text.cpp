@@ -37,6 +37,12 @@ extern "C"
 #include <iostream>
 
 #include <sstream>
+
+#include <cassert>
+#include <string>
+#include <algorithm>
+#include <vector>
+
 static int header_flag = 1;
 
 static int phase_flag = 1;
@@ -100,6 +106,139 @@ int pileup_cd_destroy(void *data, const bam1_t *b, bam_pileup_cd *cd)
     return 0;
 }
 
+#include <regex>
+
+const char complement(char const n)
+{
+    switch (n)
+    {
+    case 'A':
+        return 'T';
+    case 'T':
+        return 'A';
+    case 'G':
+        return 'C';
+    case 'C':
+        return 'G';
+    case 'N':
+        return 'N';
+    }
+    assert(false);
+    return ' ';
+}
+
+std::string complement(std::string &w)
+{
+
+    std::stringstream c;
+    for (std::string::iterator itr = w.begin(); itr != w.end(); ++itr)
+    {
+        c << complement((char)(*itr));
+    }
+    return c.str();
+}
+std::string revComplement(std::string &fwd)
+{
+    std::stringstream rev;
+    for (std::reverse_iterator<std::string::iterator> itr = fwd.rbegin(); itr != fwd.rend(); ++itr)
+    {
+        rev << complement((char)(*itr));
+    }
+    return rev.str();
+}
+
+class Modification
+{
+public:
+    std::string mod_str;
+    std::string fwd_context;
+    std::string rev_context;
+    char canonical;
+
+    int mod_code;
+    int fwd_ctx_pos;
+    int rev_ctx_pos;
+    int rev_strand;
+    int missing_is_unmodified;
+
+    // E.g.  For methylation modification on C:s at CG context:  Modification("CG+m.0")
+    Modification(const char *def_str)
+    {
+        char parse_context[50], parse_code[50];
+        int parse_pos;
+
+        std::cmatch cm;
+        std::regex mod_pat("([ACGTN]+)([+-])([0-9a-z])([.?])([0-9+])");
+
+        if (!std::regex_match(def_str, cm, mod_pat))
+        {
+            std::cerr << "Couldn't understand modification code '" << def_str << std::endl;
+            exit(1);
+        };
+        // for (unsigned i = 0; i < cm.size(); ++i)
+        // {
+        //     std::cerr << "[" << i << ':' << cm[i] << "] ";
+        // }
+
+        mod_str = std::string(cm[3].str());
+        char *p;
+        mod_code = -strtol(mod_str.c_str(), &p, 10);
+        if (*p)
+        {
+            if (mod_str.length() == 1) // require single base modification code
+            {
+                mod_code = mod_str.c_str()[0];
+            }
+            else
+            {
+                std::cerr << "Couldn't parse modification type '" << mod_str << "'\n";
+                exit(1);
+            }
+        }
+        fwd_context = std::string(cm[1]);
+        rev_context = revComplement(fwd_context);
+
+        fwd_ctx_pos = atoi(cm[5].str().c_str());
+        rev_ctx_pos = fwd_context.length() - parse_pos - 1;
+
+        canonical = fwd_context[fwd_ctx_pos];
+
+        assert(canonical == complement(rev_context[rev_ctx_pos]));
+
+        rev_strand = (cm[2].str()[0] == '-');
+        missing_is_unmodified = (cm[4].str()[0] == '.');
+
+        if (rev_strand)
+        {
+            std::cerr << "Sorry, can't handle reverse strand modifications" << std::endl;
+            exit(1);
+        }
+
+        if (!missing_is_unmodified)
+        {
+            std::cerr << "Sorry, can't handle ambiguous modification calls" << std::endl;
+            exit(1);
+        }
+        // rev_context ==
+        //:([ACGTUN][-+]([a-z]+|[0-9]+)[.?]?
+        // std::string s = std::string(def);
+        // s.find("+")
+    }
+    std::string to_string()
+    {
+        std::stringstream s;
+        s << fwd_context << " " << mod_str << canonical << " " << fwd_ctx_pos << ' ' << (rev_strand ? '-' : '+') << '\n'
+          << rev_context
+          << " "
+          << mod_str << canonical
+          << " "
+          << rev_ctx_pos << ' ' << (rev_strand ? '+' : '-');
+        return s.str();
+    }
+};
+
+std::vector<Modification> modifications;
+
 class _mod_count_t
 {
 public:
@@ -111,6 +250,10 @@ public:
     {
         canonical_count = 0;
         other_count = 0;
+        for (std::vector<Modification>::iterator cmod = modifications.begin(); cmod != modifications.end(); cmod++)
+        {
+            modified_count[cmod->mod_code] = 0;
+        }
     }
 
     void add_canonical()
@@ -215,9 +358,10 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
     // TODO: Fix this assumption
     // int read_rev = ref_base != canonical_base;
 
+    if (pos == 170379 - 1)
+        std::cerr << n << " reads." << std::endl;
     for (i = 0; i < n; i++, p++)
     {
-
         uint8_t *seq = bam_get_seq(p->b);
         uint8_t *qual = bam_get_qual(p->b);
         unsigned char q_base = seq_nt16_str[bam_seqi(seq, p->qpos)];
@@ -225,6 +369,10 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
         int ps = -1, hp = -1;
         if (base_qual < min_baseq)
         { // Ignore bases with bad quality.
+            // if (pos == 170379 - 1)
+            // {
+            //     std::cerr << "BQ skip: " << bam_get_qname(p->b) << std::endl;
+            // }
             continue;
         }
         int read_is_rev = bam_is_rev(p->b);
@@ -244,6 +392,10 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
             }
         }
 
+        // if (pos == 170379 - 1)
+        // {
+        //     std::cerr << "HP:" << hp << " PS:" << ps << " base:" << q_base << ": " << bam_get_qname(p->b) << std::endl;
+        //}
         if (p->is_del || q_base != ref_base)
         {
 
@@ -266,6 +418,10 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
 
                     if (mod[j].qual >= min_mod_prob)
                     {
+                        // if (pos == 170379 - 1)
+                        // {
+                        //     std::cerr << mod[j].modified_base << " HP:" << hp << " PS:" << ps << " base:" << q_base << ": " << bam_get_qname(p->b) << std::endl;
+                        // }
                         add_modified(pos, read_is_rev, ps, hp, mod[j].modified_base, mod[j].strand);
                     }
                     else
@@ -284,7 +440,24 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
     }
 }
 
-std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id, _mod_count_t &cnts, const char *chrom)
+std::string mod_count_to_str(int mod_code, int mod_count, int called_sites)
+{
+    std::stringstream ss;
+    if (mod_code <= 0)
+    {
+        ss << -mod_code;
+    }
+    else
+    {
+        ss << (char)mod_code;
+    }
+    ss << '\t' << mod_count;
+    double mod_freq = (double)mod_count / (double)called_sites;
+    ss << '\t' << mod_freq << '\n';
+    return ss.str();
+}
+
+std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id, _mod_count_t &cnts, const char *chrom, int out_mod_code = 0)
 {
     int called_sites = cnts.canonical_count;
     std::stringstream ss;
@@ -312,147 +485,32 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id, _mod_c
     }
 
     ss << called_sites << '\t' << cnts.other_count << '\t';
-    for (std::map<int, int>::iterator it = cnts.modified_count.begin();
-         it != cnts.modified_count.end(); it++)
 
+    if (out_mod_code == 0)
+    {
+
+        for (std::map<int, int>::iterator it = cnts.modified_count.begin();
+             it != cnts.modified_count.end(); it++)
+
+        {
+            out_stream << ss.str();
+
+            out_stream << mod_count_to_str(it->first, it->second, called_sites) << '\n';
+        }
+    }
+    else
     {
         out_stream << ss.str();
 
-        if (it->first <= 0)
-        {
-            out_stream << -it->first;
-        }
-        else
-        {
-            out_stream << (char)it->first;
-        }
-        out_stream << '\t' << it->second;
-        double mod_freq = (double)it->second / (double)called_sites;
-        out_stream << '\t' << mod_freq << '\n';
+        out_stream << mod_count_to_str(out_mod_code, cnts.modified_count[out_mod_code], called_sites);
     }
 
     return out_stream;
 }
+
 static char *reference_fasta_file = NULL;
 static char *input_bam_file = NULL;
 static char *target_region = NULL;
-#include <cassert>
-#include <string>
-#include <algorithm>
-char complement(char n)
-{
-    switch (n)
-    {
-    case 'A':
-        return 'T';
-    case 'T':
-        return 'A';
-    case 'G':
-        return 'C';
-    case 'C':
-        return 'G';
-    case 'N':
-        return 'N';
-    }
-    assert(false);
-    return ' ';
-}
-
-std::string complement(std::string &w)
-{
-
-    std::stringstream c;
-    for (std::string::iterator itr = w.begin(); itr != w.end(); ++itr)
-    {
-        c << complement((char)(*itr));
-    }
-    return c.str();
-}
-std::string revComplement(std::string &fwd)
-{
-    std::stringstream rev;
-    for (std::reverse_iterator<std::string::iterator> itr = fwd.rbegin(); itr != fwd.rend(); ++itr)
-    {
-        rev << complement((char)(*itr));
-    }
-    return rev.str();
-}
-#include <regex>
-class Modification
-{
-    std::string mod_code;
-    std::string fwd_context;
-    std::string rev_context;
-    char canonical;
-    int fwd_ctx_pos;
-    int rev_ctx_pos;
-    int rev_strand;
-    int missing_is_unmodified;
-
-public:
-    // E.g.  For methylation modification on C:s at CG context:  Modification("CG+m.0")
-    Modification(const char *def_str)
-    {
-        char parse_context[50], parse_code[50];
-        int parse_pos;
-
-        std::cmatch cm;
-        std::regex mod_pat("([ACGTN]+)([+-])([0-9a-z])([.?])([0-9+])");
-
-        if (!std::regex_match(def_str, cm, mod_pat))
-        {
-            std::cerr << "Couldn't understand modification code '" << def_str << std::endl;
-            exit(1);
-        };
-        // for (unsigned i = 0; i < cm.size(); ++i)
-        // {
-        //     std::cerr << "[" << i << ':' << cm[i] << "] ";
-        // }
-
-        mod_code = std::string(cm[3].str());
-        fwd_context = std::string(cm[1]);
-        rev_context = complement(fwd_context);
-
-        fwd_ctx_pos = atoi(cm[5].str().c_str());
-        rev_ctx_pos = fwd_context.length() - parse_pos - 1;
-
-        canonical = fwd_context[fwd_ctx_pos];
-
-        assert(canonical == rev_context[rev_ctx_pos]);
-
-        rev_strand = (cm[2].str()[0] == '-');
-        missing_is_unmodified = (cm[4].str()[0] == '.');
-
-        if (rev_strand)
-        {
-            std::cerr << "Sorry, can't handle reverse strand modifications" << std::endl;
-            exit(1);
-        }
-
-        if (!missing_is_unmodified)
-        {
-            std::cerr << "Sorry, can't handle ambiguous modification calls" << std::endl;
-            exit(1);
-        }
-        // rev_context ==
-        //:([ACGTUN][-+]([a-z]+|[0-9]+)[.?]?
-        // std::string s = std::string(def);
-        // s.find("+")
-    }
-    std::string to_string()
-    {
-        std::stringstream s;
-        s << fwd_context << " " << mod_code << canonical << " " << fwd_ctx_pos << '\n'
-          << rev_context
-          << " "
-          << mod_code << canonical
-          << " "
-          << rev_ctx_pos;
-        return s.str();
-    }
-};
-
-std::vector<Modification> modifications;
 
 int parse_options(int argc, char **argv)
 {
@@ -636,6 +694,7 @@ int main(int argc, char **argv)
 
     while ((p = bam_plp_auto(iter, &tid, &pos, &n)) != 0)
     {
+        bool plp_procced = false;
         if (pos < begin)
         {
             continue;
@@ -666,19 +725,35 @@ int main(int argc, char **argv)
         }
         // Only output CpG sites.
 
-        if ((pos < ref_len && ref_seq[pos] == 'C' && ref_seq[pos + 1] == 'G') || (pos > 0 && ref_seq[pos - 1] == 'C' && ref_seq[pos] == 'G'))
+        for (std::vector<Modification>::iterator cmod = modifications.begin(); cmod != modifications.end(); cmod++)
         {
-            process_mod_pileup0(h, p, tid, pos, n, ref_seq[pos]);
+            // require one full context length at beginning and end of reference
+            if (pos < cmod->fwd_context.length() || pos > ref_len - cmod->fwd_context.length())
+                continue;
+            int m_fwd = cmod->fwd_context.compare(0, std::string::npos, ref_seq + pos - cmod->fwd_ctx_pos, cmod->fwd_context.length());
+            int m_rev = cmod->rev_context.compare(0, std::string::npos, ref_seq + pos - cmod->rev_ctx_pos, cmod->fwd_context.length());
 
-            int idx = 0;
+            if (m_fwd == 0 || m_rev == 0)
+            {
+                // std::cerr << pos << ':' << ref_seq[pos - 1] << ref_seq[pos] << ref_seq[pos + 1] << std::endl;
+
+                if (!plp_procced)
+                {
+                    process_mod_pileup0(h, p, tid, pos, n, ref_seq[pos]);
+                    plp_procced = true;
+                }
+            }
             for (std::map<mod_key, _mod_count_t>::iterator it = mod_counter.begin();
                  it != mod_counter.end(); it++)
             {
-                // std::cerr << idx++ << ':' << ref_seq[pos] << ':' << it->first << ':' << it->second << std::endl;
-                output_mod(std::cout, it->first, it->second, ref_seq_name);
+                if ((m_fwd == 0 && it->first.read_isrev == 0) || ((m_rev == 0 && it->first.read_isrev == 1)))
+                {
+                    // std::cout << m_fwd << m_rev << it->first.read_isrev << '\n';
+                    output_mod(std::cout, it->first, it->second, ref_seq_name, cmod->mod_code);
+                }
             }
-            mod_counter.clear();
         }
+        mod_counter.clear();
     }
     bam_plp_destroy(iter);
 
