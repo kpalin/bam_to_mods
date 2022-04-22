@@ -23,6 +23,8 @@ DEALINGS IN THE SOFTWARE.  */
 #include <stdio.h>
 #include <ctype.h>
 #include <math.h>
+
+#include <getopt.h>
 extern "C"
 {
 #include <htslib/sam.h>
@@ -34,10 +36,20 @@ extern "C"
 
 #include <iostream>
 
+#include <sstream>
+static int header_flag = 1;
+
+static int phase_flag = 1;
+static int min_mod_prob = 127;
+static int min_mapq = 20;
+static int min_baseq = 7;
+static int exclude_filter = (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP);
+
 typedef struct
 {
     samFile *fp;
     sam_hdr_t *fp_hdr;
+    hts_itr_t *itr;
 } plp_dat;
 
 static int readaln(void *data, bam1_t *b)
@@ -47,10 +59,20 @@ static int readaln(void *data, bam1_t *b)
 
     while (1)
     {
-        ret = sam_read1(g->fp, g->fp_hdr, b);
+        if (g->itr)
+        {
+            ret = sam_itr_next(g->fp, g->itr, b);
+        }
+        else
+        {
+            ret = sam_read1(g->fp, g->fp_hdr, b);
+        }
+
         if (ret < 0)
             break;
-        if (b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP))
+        if (b->core.qual < min_mapq)
+            continue;
+        if (b->core.flag & exclude_filter)
             continue;
         break;
     }
@@ -78,26 +100,46 @@ int pileup_cd_destroy(void *data, const bam1_t *b, bam_pileup_cd *cd)
     return 0;
 }
 
-#define MIN_BQ 10
-#define MIN_MODQ 127
-
 class _mod_count_t
 {
 public:
+    int canonical_count;
+    int other_count;
+
+    std::map<int, int> modified_count;
     _mod_count_t()
     {
-        modified_count = 0;
         canonical_count = 0;
         other_count = 0;
     }
-    int modified_count;
-    int canonical_count;
-    int other_count;
+
+    void add_canonical()
+    {
+        canonical_count++;
+    }
+    void add_modified(int mod_id, int mod_is_rev = 0)
+    {
+        modified_count[mod_id]++;
+    }
+    void add_other()
+    {
+        other_count++;
+    }
 };
 
 std::ostream &operator<<(std::ostream &ss, _mod_count_t &obj)
 {
-    ss << obj.modified_count << '\t' << obj.canonical_count << '\t' << obj.other_count;
+    ss << obj.canonical_count << '\t' << obj.other_count;
+    for (std::map<int, int>::iterator it = obj.modified_count.begin();
+         it != obj.modified_count.end(); it++)
+    {
+        ss << '\t';
+        if (it->first <= 0)
+            ss << -it->first;
+        else
+            ss << (char)it->first;
+        ss << ":" << it->second;
+    }
     return ss;
 }
 
@@ -107,44 +149,57 @@ public:
     mod_key()
     {
         pos = 0;
-        modified_base = 0;
-        canonical_base = 0;
-        mod_isrev = 0;
+
         read_isrev = 0;
         ps = -1;
         hp = -1;
     }
     bool operator<(const mod_key &rhs) const
     {
-        return pos < rhs.pos || canonical_base < rhs.canonical_base || modified_base < rhs.modified_base || ps < rhs.ps || hp < rhs.hp || mod_isrev < rhs.mod_isrev;
+        return pos < rhs.pos || ps < rhs.ps || hp < rhs.hp || read_isrev < rhs.read_isrev;
     }
     int pos;
-    int modified_base;
-    char canonical_base;
-    int mod_isrev;
+
     int read_isrev;
     int ps;
     int hp;
 };
 std::ostream &operator<<(std::ostream &ss, const mod_key &obj_)
 {
-    ss << obj_.pos << '\t' << obj_.canonical_base << '\t';
-    if (obj_.modified_base <= 0)
-        ss << -obj_.modified_base;
-    else
-        ss << (char)obj_.modified_base;
-    ss << '\t' << obj_.mod_isrev << '\t' << obj_.read_isrev << '\t' << obj_.ps << '\t' << obj_.hp;
+    ss << obj_.pos << '\t' << obj_.read_isrev << '\t' << obj_.ps << '\t' << obj_.hp;
     return ss;
 }
 std::map<mod_key, _mod_count_t> mod_counter;
 
-void add_mod(mod_key &k, _mod_count_t &c)
+void add_canonical(int pos, int read_is_rev, int ps = -1, int hp = -1)
 {
-    _mod_count_t &oldv = mod_counter[k];
-    // std::cerr << k << 'x' << oldv << std::endl;
-    oldv.modified_count += c.modified_count;
-    oldv.canonical_count += c.canonical_count;
-    oldv.other_count += c.other_count;
+    mod_key k;
+    k.pos = pos;
+    k.read_isrev = read_is_rev;
+    k.ps = ps;
+    k.hp = hp;
+    mod_counter[k].add_canonical();
+}
+
+void add_other(int pos, int read_is_rev, int ps = -1, int hp = -1)
+{
+    mod_key k;
+    k.pos = pos;
+    k.read_isrev = read_is_rev;
+    k.ps = ps;
+    k.hp = hp;
+    mod_counter[k].add_other();
+}
+
+void add_modified(int pos, int read_is_rev, int ps, int hp, int mod_id, int const mod_is_rev = 0)
+{
+    // assert(mod_is_rev == 0);
+    mod_key k;
+    k.pos = pos;
+    k.read_isrev = read_is_rev;
+    k.ps = ps;
+    k.hp = hp;
+    mod_counter[k].add_modified(mod_id, mod_is_rev);
 }
 
 // Report a line of pileup, including base modifications inline with
@@ -155,47 +210,45 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
 
     // printf("%s\t%d\t%c\n", sam_hdr_tid2name(h, tid), pos, ref_base);
     int i;
-    _mod_count_t mod_counts;
+    //_mod_count_t mod_counts;
 
     // TODO: Fix this assumption
     // int read_rev = ref_base != canonical_base;
 
     for (i = 0; i < n; i++, p++)
     {
-        mod_key mod_id;
+
         uint8_t *seq = bam_get_seq(p->b);
         uint8_t *qual = bam_get_qual(p->b);
         unsigned char q_base = seq_nt16_str[bam_seqi(seq, p->qpos)];
         uint8_t base_qual = qual[p->qpos];
-
-        if (base_qual < MIN_BQ)
+        int ps = -1, hp = -1;
+        if (base_qual < min_baseq)
         { // Ignore bases with bad quality.
             continue;
         }
-
-        mod_id.read_isrev = bam_is_rev(p->b);
-        mod_id.canonical_base = q_base;
-        mod_id.pos = pos;
+        int read_is_rev = bam_is_rev(p->b);
 
         // if (bam_is_rev(p->b) != read_rev)
         // {
         //     continue;
         // }
-
-        uint8_t *_hp_tag = bam_aux_get(p->b, "HP");
-
-        if (_hp_tag != NULL)
+        if (phase_flag)
         {
-            mod_id.hp = bam_aux2i(_hp_tag);
-            mod_id.ps = bam_aux2i(bam_aux_get(p->b, "PS"));
+            uint8_t *_hp_tag = bam_aux_get(p->b, "HP");
+
+            if (_hp_tag != NULL)
+            {
+                hp = bam_aux2i(_hp_tag);
+                ps = bam_aux2i(bam_aux_get(p->b, "PS"));
+            }
         }
 
         if (p->is_del || q_base != ref_base)
         {
-            // Only count the number of deletions and mismatches.
-            mod_id.canonical_base = q_base;
 
-            mod_counts.other_count++;
+            add_other(pos, read_is_rev, ps, hp);
+            // mod_counts.other_count++;
         }
         else
         {
@@ -210,96 +263,395 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
                 // putchar('[');
                 for (j = 0; j < nm && j < 5; j++)
                 {
-                    if (mod[j].modified_base == 'm' /*mod_counts.modified_base*/)
+
+                    if (mod[j].qual >= min_mod_prob)
                     {
-                        if (mod[j].qual >= MIN_MODQ)
-                        {
-                            mod_counts.modified_count++;
-                        }
-                        else
-                        {
-                            mod_counts.canonical_count++;
-                        }
+                        add_modified(pos, read_is_rev, ps, hp, mod[j].modified_base, mod[j].strand);
                     }
-                    // printf("%c%c%d", "+-"[mod[j].strand],
-                    //        mod[j].modified_base, mod[j].qual);
+                    else
+                    {
+                        add_canonical(pos, read_is_rev, ps, hp);
+                    }
                 }
-                // putchar(']');
             }
             else
             { // There is no modifications called at this locus
-                mod_counts.canonical_count++;
+                add_canonical(pos, read_is_rev, ps, hp);
                 // putchar(c);
             }
         }
-        add_mod(mod_id, mod_counts);
+        // add_mod(mod_id, mod_counts);
     }
-    if ((mod_counts.modified_count + mod_counts.canonical_count) > 0)
+}
+
+std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id, _mod_count_t &cnts, const char *chrom)
+{
+    int called_sites = cnts.canonical_count;
+    std::stringstream ss;
+    if (header_flag)
     {
-        // printf("%s\t%d\t%c\t%d\t%d\t%c\t%c\t",
-        //        sam_hdr_tid2name(h, tid), pos, ref_base,
-        //        mod_counts.modified_count + mod_counts.canonical_count + mod_counts.other_count,
-        //        PS, HP, "+-"[read_rev]);
-
-        // if (mod_counts.modified_base < 0)
-        //     // ChEBI
-        //     printf("%d\t", -mod_counts.modified_base);
-        // else
-        //     printf("%c\t", mod_counts.modified_base);
-
-        // double mod_prop = mod_counts.modified_count * 1.0 / (mod_counts.modified_count + mod_counts.canonical_count);
-        // printf("%d\t%d\t%d\t%.3g\n", mod_counts.canonical_count, mod_counts.modified_count, mod_counts.other_count, mod_prop);
-        // putchar('\n');
+        out_stream << "#chromosome\tposition\tstrand\thaplotype\tphase_set\tcalled_reads\tother_reads\tmodification\tmodified_reads\tmodified_prop\n";
+        header_flag = 0;
     }
+    for (std::map<int, int>::iterator it = cnts.modified_count.begin();
+         it != cnts.modified_count.end(); it++)
+
+    {
+        called_sites += it->second;
+    }
+
+    ss << chrom << '\t' << mod_id.pos + 1 << '\t' << (mod_id.read_isrev ? '-' : '+') << '\t';
+
+    if (mod_id.hp >= 0)
+    {
+        ss << mod_id.hp << '\t' << mod_id.ps << '\t';
+    }
+    else
+    {
+        ss << "N\t" << mod_id.ps << '\t';
+    }
+
+    ss << called_sites << '\t' << cnts.other_count << '\t';
+    for (std::map<int, int>::iterator it = cnts.modified_count.begin();
+         it != cnts.modified_count.end(); it++)
+
+    {
+        out_stream << ss.str();
+
+        if (it->first <= 0)
+        {
+            out_stream << -it->first;
+        }
+        else
+        {
+            out_stream << (char)it->first;
+        }
+        out_stream << '\t' << it->second;
+        double mod_freq = (double)it->second / (double)called_sites;
+        out_stream << '\t' << mod_freq << '\n';
+    }
+
+    return out_stream;
+}
+static char *reference_fasta_file = NULL;
+static char *input_bam_file = NULL;
+static char *target_region = NULL;
+#include <cassert>
+#include <string>
+#include <algorithm>
+char complement(char n)
+{
+    switch (n)
+    {
+    case 'A':
+        return 'T';
+    case 'T':
+        return 'A';
+    case 'G':
+        return 'C';
+    case 'C':
+        return 'G';
+    case 'N':
+        return 'N';
+    }
+    assert(false);
+    return ' ';
+}
+
+std::string complement(std::string &w)
+{
+
+    std::stringstream c;
+    for (std::string::iterator itr = w.begin(); itr != w.end(); ++itr)
+    {
+        c << complement((char)(*itr));
+    }
+    return c.str();
+}
+std::string revComplement(std::string &fwd)
+{
+    std::stringstream rev;
+    for (std::reverse_iterator<std::string::iterator> itr = fwd.rbegin(); itr != fwd.rend(); ++itr)
+    {
+        rev << complement((char)(*itr));
+    }
+    return rev.str();
+}
+#include <regex>
+class Modification
+{
+    std::string mod_code;
+    std::string fwd_context;
+    std::string rev_context;
+    char canonical;
+    int fwd_ctx_pos;
+    int rev_ctx_pos;
+    int rev_strand;
+    int missing_is_unmodified;
+
+public:
+    // E.g.  For methylation modification on C:s at CG context:  Modification("CG+m.0")
+    Modification(const char *def_str)
+    {
+        char parse_context[50], parse_code[50];
+        int parse_pos;
+
+        std::cmatch cm;
+        std::regex mod_pat("([ACGTN]+)([+-])([0-9a-z])([.?])([0-9+])");
+
+        if (!std::regex_match(def_str, cm, mod_pat))
+        {
+            std::cerr << "Couldn't understand modification code '" << def_str << std::endl;
+            exit(1);
+        };
+        // for (unsigned i = 0; i < cm.size(); ++i)
+        // {
+        //     std::cerr << "[" << i << ':' << cm[i] << "] ";
+        // }
+
+        mod_code = std::string(cm[3].str());
+        fwd_context = std::string(cm[1]);
+        rev_context = complement(fwd_context);
+
+        fwd_ctx_pos = atoi(cm[5].str().c_str());
+        rev_ctx_pos = fwd_context.length() - parse_pos - 1;
+
+        canonical = fwd_context[fwd_ctx_pos];
+
+        assert(canonical == rev_context[rev_ctx_pos]);
+
+        rev_strand = (cm[2].str()[0] == '-');
+        missing_is_unmodified = (cm[4].str()[0] == '.');
+
+        if (rev_strand)
+        {
+            std::cerr << "Sorry, can't handle reverse strand modifications" << std::endl;
+            exit(1);
+        }
+
+        if (!missing_is_unmodified)
+        {
+            std::cerr << "Sorry, can't handle ambiguous modification calls" << std::endl;
+            exit(1);
+        }
+        // rev_context ==
+        //:([ACGTUN][-+]([a-z]+|[0-9]+)[.?]?
+        // std::string s = std::string(def);
+        // s.find("+")
+    }
+    std::string to_string()
+    {
+        std::stringstream s;
+        s << fwd_context << " " << mod_code << canonical << " " << fwd_ctx_pos << '\n'
+          << rev_context
+          << " "
+          << mod_code << canonical
+          << " "
+          << rev_ctx_pos;
+        return s.str();
+    }
+};
+
+std::vector<Modification> modifications;
+
+int parse_options(int argc, char **argv)
+{
+    int c;
+    static struct option long_options[] =
+        {
+            /* These options set a flag. */
+            {"no_header", no_argument, &header_flag, 0},
+            {"no_phase", no_argument, &phase_flag, 0},
+            /* These options don’t set a flag.
+               We distinguish them by their indices. */
+            {"reference_fasta", required_argument, 0, 'r'},
+            {"input", required_argument, 0, 'i'},
+            {"min_mod_prob", required_argument, 0, 'c'},
+            {"min_baseq", required_argument, 0, 'b'},
+            {"min_mapq", required_argument, 0, 'q'},
+            {"exclude", required_argument, 0, 'E'},
+            {"mod", required_argument, 0, 'm'},
+            {"region", required_argument, 0, 'R'},
+            {0, 0, 0, 0}};
+    while (1)
+    {
+
+        /* getopt_long stores the option index here. */
+        int option_index = 0;
+
+        c = getopt_long(argc, argv, "r:i:c:b:m:q:E:R:",
+                        long_options, &option_index);
+        // std::cerr << "getopt_long ret: " << c << '\n';
+        /* Detect the end of the options. */
+        if (c == -1)
+            break;
+
+        // std::cerr << "phase_flag:" << phase_flag << '\n';
+        if (c != 0)
+        {
+            std::cerr << "option -" << (char)c << ' ' << (optarg ? optarg : "") << '\n';
+        } // std::cerr << c << ':' << option_index << ':' << long_options[option_index].name << ':' << optarg << std::endl;
+        // std::cerr << "Err" << '\n';
+        // std::cout << __LINE__ << '\n';
+        switch (c)
+        {
+        case 0:
+            /* If this option set a flag, do nothing else now. */
+            if (long_options[option_index].flag != 0)
+                break;
+            std::cerr << "option --" << long_options[option_index].name;
+            if (optarg)
+                std::cerr << optarg;
+            std::cerr << '\n';
+            break;
+
+        case 'm':
+            modifications.push_back(Modification(optarg));
+            break;
+        case 'r':
+            // printf("option -r with value `%s'\n", optarg);
+            reference_fasta_file = strdup(optarg);
+            break;
+
+        case 'i':
+            // printf("option -i with value `%s'\n", optarg);
+            input_bam_file = strdup(optarg);
+            break;
+
+        case 'c':
+            // printf("option -c with value `%s'\n", optarg);
+            min_mod_prob = atoi(optarg);
+            break;
+        case 'b':
+            // printf("option -b with value `%s'\n", optarg);
+            min_baseq = atoi(optarg);
+            break;
+        case 'q':
+            // printf("option -q with value `%s'\n", optarg);
+            min_mapq = atoi(optarg);
+            break;
+        case 'E':
+            // printf("option -E with value `%s'\n", optarg);
+            exclude_filter = atoi(optarg);
+            break;
+        case 'R':
+            // printf("option -R with value `%s'\n", optarg);
+            target_region = strdup(optarg);
+            break;
+        case '?':
+            /* getopt_long already printed an error message. */
+            return 1;
+            break;
+
+        default:
+            abort();
+        }
+    }
+    if (modifications.size() == 0)
+    {
+        modifications.push_back(Modification("CG+m.0"));
+    }
+
+    if (!reference_fasta_file || !input_bam_file)
+    {
+        return 1;
+    }
+    return 0;
 }
 
 int main(int argc, char **argv)
 {
-    if (argc < 3)
+    if (parse_options(argc, argv))
     {
-        fprintf(stderr, "usage: %s ref.fasta input.cram\n", argv[0]);
+        fprintf(stderr, "usage: %s [-c %d] [-b %d]  [-q %d] [-E %d] [-m CG+m.0] [-R chr1:1-100] [--no_header] [--no_phase] -r ref.fasta -i input.cram\n\n"
+                        " -c    Minimum probability of modification called modified.\n"
+                        " -b    Minimum base quality considered.\n"
+                        " -q    Minimum mapping quality considred.\n"
+                        " -E    Exclude all reads matching any of these SAM flags.\n"
+                        " -R    Genomic region to consider.\n"
+                        " -r    FAI indexed fasta file of the reference genome.\n"
+                        " -i    Input SAM/BAM/CRAM file. Indexed if used with -R.\n"
+                        " -m    DNA modification to consider. Format: 'CG+m.0' for methylation 'm' of C:s on position '0' \n"
+                        "       of context 'CG' in forward strand. Can be given multiple times. If none given, 'CG+m.0' is used.\n",
+                argv[0], min_mod_prob, min_baseq, min_mapq, exclude_filter);
         exit(1);
     }
+
     // First argument: reference genome
-    faidx_t *ref_fai = fai_load(argv[1]);
+    std::cerr << "reference_fasta_file:" << reference_fasta_file << std::endl;
+    std::cerr << "input_bam_file:" << input_bam_file << std::endl;
+    std::cerr << "min_mod_prob:" << min_mod_prob << std::endl;
+
+    for (std::vector<Modification>::iterator itr = modifications.begin(); itr != modifications.end(); itr++)
+    {
+        std::cerr << itr->to_string() << std::endl;
+    }
+
+    faidx_t *ref_fai = fai_load(reference_fasta_file);
     if (!ref_fai)
     {
-        fprintf(stderr, "Can't open reference genome fasta '%s'.", argv[1]);
+        fprintf(stderr, "Can't open reference genome fasta '%s'.", reference_fasta_file);
 
         exit(1);
     }
-    argc--;
-    argv++;
 
-    samFile *in = sam_open(argc > 1 ? argv[1] : "-", "r");
+    samFile *in = sam_open(input_bam_file, "r");
     bam1_t *b = bam_init1();
     sam_hdr_t *h = sam_hdr_read(in);
 
+    const bam_pileup1_t *p;
+    int tid, pos, n;
+    hts_pos_t begin = 0, end = INT_MAX;
+    int prev_tid = -1;
+    hts_pos_t ref_len = 0;
+    char *ref_seq = NULL;
+    const char *ref_seq_name = NULL;
+
+    hts_itr_t *sam_iter = NULL;
+    if (target_region != NULL)
+    {
+        sam_parse_region(h, target_region, &tid, &begin, &end, 0);
+
+        hts_idx_t *idx = NULL;
+        if ((idx = sam_index_load(in, input_bam_file)) == 0)
+        {
+            fprintf(stderr, "[E::%s] fail to load the BAM index\n", __func__);
+            exit(1);
+        }
+        if ((sam_iter = sam_itr_querys(idx, h, target_region)) == 0)
+        {
+            fprintf(stderr, "[E::%s] fail to parse region '%s'\n", __func__, target_region);
+            exit(1);
+        }
+    }
     // Pileup iterator with constructor/destructor to parse base mod tags
     plp_dat dat = {
         .fp = in,
         .fp_hdr = h,
+        .itr = sam_iter,
     };
     bam_plp_t iter = bam_plp_init(readaln, &dat);
     bam_plp_constructor(iter, pileup_cd_create);
     bam_plp_destructor(iter, pileup_cd_destroy);
 
-    const bam_pileup1_t *p;
-    int tid, pos, n;
-    printf("Mod0\n");
-    int prev_tid = -1;
-    hts_pos_t ref_len = 0;
-    char *ref_seq = NULL;
-
     while ((p = bam_plp_auto(iter, &tid, &pos, &n)) != 0)
     {
+        if (pos < begin)
+        {
+            continue;
+        }
+        else if (pos >= end)
+        {
+            break;
+        }
         if (tid != prev_tid)
         {
             if (ref_seq)
             {
                 free(ref_seq);
             }
-            ref_seq = fai_fetch64(ref_fai, sam_hdr_tid2name(dat.fp_hdr, tid), &ref_len);
+            ref_seq_name = sam_hdr_tid2name(dat.fp_hdr, tid);
+            ref_seq = fai_fetch64(ref_fai, ref_seq_name, &ref_len);
             if (!ref_seq)
             {
                 fprintf(stderr, "Couldn't fetch reference!");
@@ -316,14 +668,14 @@ int main(int argc, char **argv)
 
         if ((pos < ref_len && ref_seq[pos] == 'C' && ref_seq[pos + 1] == 'G') || (pos > 0 && ref_seq[pos - 1] == 'C' && ref_seq[pos] == 'G'))
         {
-            // fprintf(stderr, "Pos: %d\n", pos);
             process_mod_pileup0(h, p, tid, pos, n, ref_seq[pos]);
-            // kh_clear(mod_count_h, mod_ch);
+
             int idx = 0;
             for (std::map<mod_key, _mod_count_t>::iterator it = mod_counter.begin();
                  it != mod_counter.end(); it++)
             {
-                std::cerr << idx++ << ':' << ref_seq[pos] << ':' << it->first << ':' << it->second << std::endl;
+                // std::cerr << idx++ << ':' << ref_seq[pos] << ':' << it->first << ':' << it->second << std::endl;
+                output_mod(std::cout, it->first, it->second, ref_seq_name);
             }
             mod_counter.clear();
         }
