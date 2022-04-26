@@ -13,7 +13,6 @@
             "args": [
                 "-R",
                 "chr9:170000-180000",
-                "--no_phase",
                 "-r",
                 "/mnt/cg8/reference-genomes/GRCh38_no_alt/GRCh38_no_alt.fasta",
                 "-i",

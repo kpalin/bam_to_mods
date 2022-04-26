@@ -44,13 +44,14 @@ extern "C"
 #include <vector>
 
 static int header_flag = 1;
+static int split_strand_flag = 0;
 
 static int phase_flag = 1;
 static int min_mod_prob = 127;
 static int min_mapq = 20;
 static int min_baseq = 7;
 static int exclude_filter = (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP);
-
+// samtools view -F 1796 -u /mnt/cgnano/projects/promethion/kpalin/dev/Fam_c461_1_19_0711NK_meg/phase/longshot.Fam_c461_1_19_0711NK_meg.phased.cram chr9:170012-170012  |samtools mpileup -Q 7 -q 20 --output-extra PS - |grep  170012
 typedef struct
 {
     samFile *fp;
@@ -123,6 +124,7 @@ const char complement(char const n)
     case 'N':
         return 'N';
     }
+    std::cerr << n << '\n';
     assert(false);
     return ' ';
 }
@@ -164,8 +166,6 @@ public:
     // E.g.  For methylation modification on C:s at CG context:  Modification("CG+m.0")
     Modification(const char *def_str)
     {
-        char parse_context[50], parse_code[50];
-        int parse_pos;
 
         std::cmatch cm;
         std::regex mod_pat("([ACGTN]+)([+-])([0-9a-z])([.?])([0-9+])");
@@ -175,10 +175,6 @@ public:
             std::cerr << "Couldn't understand modification code '" << def_str << std::endl;
             exit(1);
         };
-        // for (unsigned i = 0; i < cm.size(); ++i)
-        // {
-        //     std::cerr << "[" << i << ':' << cm[i] << "] ";
-        // }
 
         mod_str = std::string(cm[3].str());
         char *p;
@@ -198,8 +194,12 @@ public:
         fwd_context = std::string(cm[1]);
         rev_context = revComplement(fwd_context);
 
-        fwd_ctx_pos = atoi(cm[5].str().c_str());
-        rev_ctx_pos = fwd_context.length() - parse_pos - 1;
+        // fwd_ctx_pos = atoi(cm[5].str().c_str());
+        fwd_ctx_pos = strtol(cm[5].str().c_str(), &p, 10);
+        rev_ctx_pos = fwd_context.length() - fwd_ctx_pos - 1;
+
+        assert(fwd_ctx_pos >= 0);
+        assert(rev_ctx_pos > 0);
 
         canonical = fwd_context[fwd_ctx_pos];
 
@@ -255,7 +255,17 @@ public:
             modified_count[cmod->mod_code] = 0;
         }
     }
+    bool operator==(const _mod_count_t &Ref) const
+    {
+        return (this->canonical_count == Ref.canonical_count) && this->other_count == Ref.other_count && this->modified_count == Ref.modified_count;
+    }
 
+    _mod_count_t(const _mod_count_t &c)
+    {
+        this->canonical_count = c.canonical_count;
+        this->other_count = c.other_count;
+        this->modified_count = c.modified_count;
+    }
     void add_canonical()
     {
         canonical_count++;
@@ -289,60 +299,170 @@ std::ostream &operator<<(std::ostream &ss, _mod_count_t &obj)
 class mod_key
 {
 public:
-    mod_key()
+    mod_key(int pos = 0, int read_is_rev = -1, int ps = -1, int hp = -1) : pos(pos), read_isrev(read_is_rev), ps(ps), hp(hp)
     {
-        pos = 0;
-
-        read_isrev = 0;
-        ps = -1;
-        hp = -1;
     }
+    bool operator==(const mod_key &Ref) const
+    {
+        return (this->pos == Ref.pos) && (this->read_isrev == Ref.read_isrev) && (this->ps == Ref.ps) && (this->hp == Ref.hp);
+    }
+
+    // Order of mod_keys: dictionary order of (pos,read_is_rev,ps,hp)
     bool operator<(const mod_key &rhs) const
     {
-        return pos < rhs.pos || ps < rhs.ps || hp < rhs.hp || read_isrev < rhs.read_isrev;
-    }
-    int pos;
+        if (pos < rhs.pos)
+            return true;
+        else if (pos > rhs.pos)
+            return false;
+        if (read_isrev < rhs.read_isrev)
+            return true;
+        else if (read_isrev > rhs.read_isrev)
+            return false;
+        if (ps < rhs.ps)
+            return true;
+        else if (ps > rhs.ps)
+            return false;
+        if (hp < rhs.hp)
+            return true;
+        else if (hp > rhs.hp)
+            return false;
 
-    int read_isrev;
-    int ps;
-    int hp;
+        return false;
+    }
+    const int pos;
+
+    const int read_isrev;
+    const int ps;
+    const int hp;
 };
 std::ostream &operator<<(std::ostream &ss, const mod_key &obj_)
 {
     ss << obj_.pos << '\t' << obj_.read_isrev << '\t' << obj_.ps << '\t' << obj_.hp;
     return ss;
 }
-std::map<mod_key, _mod_count_t> mod_counter;
 
-void add_canonical(int pos, int read_is_rev, int ps = -1, int hp = -1)
+class ModCounter
 {
-    mod_key k;
-    k.pos = pos;
-    k.read_isrev = read_is_rev;
-    k.ps = ps;
-    k.hp = hp;
-    mod_counter[k].add_canonical();
+private:
+    /* data */
+    std::map<mod_key, _mod_count_t> mod_count_store;
+
+public:
+    ModCounter(/* args */);
+    ~ModCounter();
+    void add_canonical(int pos, int read_is_rev, int ps = -1, int hp = -1);
+
+    void add_modified(int pos, int read_is_rev, int ps, int hp, int mod_id, int const mod_is_rev = 0);
+
+    void add_other(int pos, int read_is_rev, int ps = -1, int hp = -1);
+
+    std::map<mod_key, _mod_count_t>::iterator begin() { return mod_count_store.begin(); }
+    std::map<mod_key, _mod_count_t>::iterator end() { return mod_count_store.end(); }
+    std::size_t size() { return this->mod_count_store.size(); }
+    std::map<mod_key, _mod_count_t>::iterator from(int pos)
+    {
+        std::map<mod_key, _mod_count_t>::iterator it = mod_count_store.lower_bound(mod_key(pos));
+        // if (it != this->end())
+        // {
+        //     std::cout << this->begin()->second << ' ';
+        //     std::cout << pos << '=' << it->first << "+" << (*it).second << '\n';
+        // }
+
+        // assert(it != this->end());
+        return it;
+    }
+    void check()
+    {
+        if (!mod_count_store.empty())
+        {
+            // std::cerr << mod_count_store.begin()->first << '@' << mod_count_store.begin()->second << " <-> " << mod_count_store.at(mod_count_store.begin()->first) << '\n';
+            assert(mod_count_store.count(mod_count_store.begin()->first) == 1);
+            assert(mod_count_store.begin()->second == mod_count_store.at(mod_count_store.begin()->first));
+        }
+        for (std::map<mod_key, _mod_count_t>::iterator it = mod_count_store.begin(); it != mod_count_store.end(); it++)
+        {
+            // std::cerr << mod_count_store.at(it->first) << " --- " << it->second
+            //           << " ... " << mod_count_store[it->first] << '\n';
+            assert(mod_count_store.at(it->first) == it->second);
+            assert(mod_count_store.find(it->first)->first == it->first);
+            std::map<mod_key, _mod_count_t>::iterator fit = mod_count_store.lower_bound(it->first);
+            assert(fit == it);
+            assert(fit->first == it->first);
+            assert(fit->second == it->second);
+        }
+        // if (mod_count_store.size() > 0)
+        // abort();
+    }
+    std::map<mod_key, _mod_count_t>::iterator to(int pos) { return mod_count_store.lower_bound(mod_key(pos + 1)); }
+    // std::map<mod_key, _mod_count_t>::iterator at(int pos) { return mod_count_store.find(mod_key(pos)); }
+    void clear() { mod_count_store.clear(); }
+    void erase_upto(int upto);
+};
+
+std::ostream &operator<<(std::ostream &os, ModCounter &cnts)
+{
+    for (std::map<mod_key, _mod_count_t>::iterator it = cnts.begin();
+         it != cnts.end(); it++)
+    {
+        os << it->first << " : " << it->second << '\n';
+    }
+    return os;
+}
+ModCounter::ModCounter(/* args */)
+{
+    // this->mod_count_store = std::map<mod_key, _mod_count_t>();
 }
 
-void add_other(int pos, int read_is_rev, int ps = -1, int hp = -1)
+ModCounter::~ModCounter()
 {
-    mod_key k;
-    k.pos = pos;
-    k.read_isrev = read_is_rev;
-    k.ps = ps;
-    k.hp = hp;
-    mod_counter[k].add_other();
 }
 
-void add_modified(int pos, int read_is_rev, int ps, int hp, int mod_id, int const mod_is_rev = 0)
+ModCounter mod_counter;
+
+// Remove all modifications up to, and including position 'upto'
+void ModCounter::erase_upto(int upto)
+{
+    if (mod_count_store.size() > 0)
+    {
+
+        std::map<mod_key, _mod_count_t>::iterator upto_it = this->mod_count_store.lower_bound(upto + 1);
+
+        // std::cerr << *this << "\nErasing up to ";
+        // if (upto_it == this->mod_count_store.end())
+        // {
+        //     std::cerr << "end" << '\n';
+        // }
+        // else
+        // {
+        //     std::cerr << upto << " : " << upto_it->first << " : " << upto_it->second << '\n';
+        // }
+
+        this->mod_count_store.erase(this->begin(), upto_it);
+    }
+}
+
+void ModCounter::add_canonical(int pos, int read_is_rev, int ps, int hp)
+{
+    mod_key k(pos, read_is_rev, ps, hp);
+    mod_count_store[k].add_canonical();
+    // for (auto i = mod_count_store.begin(); i != mod_count_store.end(); i++)
+    // {
+    //     std::cerr << "iter: " << i->first << " and " << i->second << '\n';
+    // }
+    // std::cerr << '|' << mod_count_store.size() << '|' << k << "->" << mod_count_store.at(k) << '\n';
+}
+
+void ModCounter::add_other(int pos, int read_is_rev, int ps, int hp)
+{
+    mod_key k(pos, read_is_rev, ps, hp);
+    mod_count_store[k].add_other();
+}
+
+void ModCounter::add_modified(int pos, int read_is_rev, int ps, int hp, int mod_id, int const mod_is_rev)
 {
     // assert(mod_is_rev == 0);
-    mod_key k;
-    k.pos = pos;
-    k.read_isrev = read_is_rev;
-    k.ps = ps;
-    k.hp = hp;
-    mod_counter[k].add_modified(mod_id, mod_is_rev);
+    mod_key k(pos, read_is_rev, ps, hp);
+    mod_count_store[k].add_modified(mod_id, mod_is_rev);
 }
 
 // Report a line of pileup, including base modifications inline with
@@ -351,15 +471,10 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
                          int tid, int pos, int n, char ref_base)
 {
 
-    // printf("%s\t%d\t%c\n", sam_hdr_tid2name(h, tid), pos, ref_base);
     int i;
-    //_mod_count_t mod_counts;
 
-    // TODO: Fix this assumption
-    // int read_rev = ref_base != canonical_base;
-
-    if (pos == 170379 - 1)
-        std::cerr << n << " reads." << std::endl;
+    //    if (pos == 170012 - 1)
+    //        std::cerr << n << " reads." << std::endl;
     for (i = 0; i < n; i++, p++)
     {
         uint8_t *seq = bam_get_seq(p->b);
@@ -369,18 +484,11 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
         int ps = -1, hp = -1;
         if (base_qual < min_baseq)
         { // Ignore bases with bad quality.
-            // if (pos == 170379 - 1)
-            // {
-            //     std::cerr << "BQ skip: " << bam_get_qname(p->b) << std::endl;
-            // }
+
             continue;
         }
         int read_is_rev = bam_is_rev(p->b);
 
-        // if (bam_is_rev(p->b) != read_rev)
-        // {
-        //     continue;
-        // }
         if (phase_flag)
         {
             uint8_t *_hp_tag = bam_aux_get(p->b, "HP");
@@ -392,22 +500,15 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
             }
         }
 
-        // if (pos == 170379 - 1)
-        // {
-        //     std::cerr << "HP:" << hp << " PS:" << ps << " base:" << q_base << ": " << bam_get_qname(p->b) << std::endl;
-        //}
         if (p->is_del || q_base != ref_base)
         {
-
-            add_other(pos, read_is_rev, ps, hp);
-            // mod_counts.other_count++;
+            mod_counter.add_other(pos, read_is_rev, ps, hp);
         }
         else
         {
             hts_base_mod_state *m = (hts_base_mod_state *)p->cd.p;
             hts_base_mod mod[5];
             int nm;
-            // putchar("+-"[bam_is_rev(p->b)]);
             if ((nm = bam_mods_at_qpos(p->b, p->qpos, m, mod, 5)) > 0)
             {
                 int j;
@@ -418,24 +519,25 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
 
                     if (mod[j].qual >= min_mod_prob)
                     {
-                        // if (pos == 170379 - 1)
-                        // {
-                        //     std::cerr << mod[j].modified_base << " HP:" << hp << " PS:" << ps << " base:" << q_base << ": " << bam_get_qname(p->b) << std::endl;
-                        // }
-                        add_modified(pos, read_is_rev, ps, hp, mod[j].modified_base, mod[j].strand);
+                        mod_counter.add_modified(pos, read_is_rev, ps, hp, mod[j].modified_base, mod[j].strand);
                     }
                     else
                     {
-                        add_canonical(pos, read_is_rev, ps, hp);
+                        mod_counter.add_canonical(pos, read_is_rev, ps, hp);
                     }
                 }
             }
             else
             { // There is no modifications called at this locus
-                add_canonical(pos, read_is_rev, ps, hp);
+                mod_counter.add_canonical(pos, read_is_rev, ps, hp);
                 // putchar(c);
             }
         }
+        // if (pos == 170012 - 1)
+        // {
+        //     std::cerr << mod_counter << '\n';
+        // }
+
         // add_mod(mod_id, mod_counts);
     }
 }
@@ -459,6 +561,7 @@ std::string mod_count_to_str(int mod_code, int mod_count, int called_sites)
 
 std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id, _mod_count_t &cnts, const char *chrom, int out_mod_code = 0)
 {
+    // std::cout << mod_id << 'x' << cnts << '\n';
     int called_sites = cnts.canonical_count;
     std::stringstream ss;
     if (header_flag)
@@ -520,6 +623,7 @@ int parse_options(int argc, char **argv)
             /* These options set a flag. */
             {"no_header", no_argument, &header_flag, 0},
             {"no_phase", no_argument, &phase_flag, 0},
+            {"split_strand", no_argument, &split_strand_flag, 1},
             /* These options don’t set a flag.
                We distinguish them by their indices. */
             {"reference_fasta", required_argument, 0, 'r'},
@@ -624,7 +728,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: %s [-c %d] [-b %d]  [-q %d] [-E %d] [-m CG+m.0] [-R chr1:1-100] [--no_header] [--no_phase] -r ref.fasta -i input.cram\n\n"
                         " -c    Minimum probability of modification called modified.\n"
                         " -b    Minimum base quality considered.\n"
-                        " -q    Minimum mapping quality considred.\n"
+                        " -q    Minimum mapping quality considered.\n"
                         " -E    Exclude all reads matching any of these SAM flags.\n"
                         " -R    Genomic region to consider.\n"
                         " -r    FAI indexed fasta file of the reference genome.\n"
@@ -728,7 +832,7 @@ int main(int argc, char **argv)
         for (std::vector<Modification>::iterator cmod = modifications.begin(); cmod != modifications.end(); cmod++)
         {
             // require one full context length at beginning and end of reference
-            if (pos < cmod->fwd_context.length() || pos > ref_len - cmod->fwd_context.length())
+            if (pos < (int)cmod->fwd_context.length() || pos > ref_len - (int)cmod->fwd_context.length())
                 continue;
             int m_fwd = cmod->fwd_context.compare(0, std::string::npos, ref_seq + pos - cmod->fwd_ctx_pos, cmod->fwd_context.length());
             int m_rev = cmod->rev_context.compare(0, std::string::npos, ref_seq + pos - cmod->rev_ctx_pos, cmod->fwd_context.length());
@@ -743,16 +847,61 @@ int main(int argc, char **argv)
                     plp_procced = true;
                 }
             }
-            for (std::map<mod_key, _mod_count_t>::iterator it = mod_counter.begin();
-                 it != mod_counter.end(); it++)
+            mod_counter.check();
+            // if (mod_counter.size() > 0)
+            // {
+            //     std::cout << "\nAlku : " << mod_counter.begin()->second << '\n';
+            //     auto apu = mod_counter.from(0);
+            //     std::cout << "0 paikan toinen: "
+            //               << apu->second;
+            //     std::cout << "\nAlku uudelleen: " << mod_counter.begin()->second << '\n';
+            //     // assert(mod_counter.begin() == mod_counter.from(0));
+            // }
+
+            for (std::map<mod_key, _mod_count_t>::iterator it = mod_counter.from(pos);
+                 it != mod_counter.to(pos); it++)
             {
+                assert(it != mod_counter.end());
                 if ((m_fwd == 0 && it->first.read_isrev == 0) || ((m_rev == 0 && it->first.read_isrev == 1)))
                 {
                     // std::cout << m_fwd << m_rev << it->first.read_isrev << '\n';
+
+                    // std::cout << mod_counter << '\n'
+                    //           << it->first << ':' << it->second << '\n'
+                    //           << mod_counter;
                     output_mod(std::cout, it->first, it->second, ref_seq_name, cmod->mod_code);
                 }
             }
         }
+        // if (mod_counter.size() > 10000)
+        // {
+        //     mod_counter.erase(mod_counter.begin(),
+        //                       mod_counter.find(mod_key(pos - 10)));
+        //     std::cerr << "Erasing stuff..\n";
+        // }
+        // mod_counter.erase_upto(pos);
+        // if (mod_counter.mod_count_store.size() > 0)
+        // {
+        //     mod_counter.mod_count_store[mod_key(pos)] = _mod_count_t();
+        //     // mod_counter.mod_count_store.erase(mod_counter.at(pos)); // mod_counter.begin()); //,
+        //     //                                    mod_counter.at(pos));
+
+        //     std::cerr
+        //         << "---\n"
+        //         << mod_counter;
+        //     if (mod_counter.begin() != mod_counter.end())
+        //     {
+        //         std::cerr << mod_counter.begin()->first << "<->";
+        //     }
+
+        //     if (mod_counter.mod_count_store.lower_bound(mod_key(pos)) != mod_counter.end())
+        //     {
+        //         std::cerr << mod_counter.mod_count_store.lower_bound(mod_key(pos))->first;
+        //     }
+        //     std::cerr << '\n';
+        // }
+        // mod_counter.erase_upto(pos);
+        // assert(mod_counter.size() == 0);
         mod_counter.clear();
     }
     bam_plp_destroy(iter);
