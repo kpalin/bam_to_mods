@@ -259,7 +259,18 @@ public:
     {
         return (this->canonical_count == Ref.canonical_count) && this->other_count == Ref.other_count && this->modified_count == Ref.modified_count;
     }
-
+    _mod_count_t operator+(_mod_count_t &c)
+    {
+        _mod_count_t r;
+        r.canonical_count = c.canonical_count + this->canonical_count;
+        r.other_count = c.other_count + this->other_count;
+        for (std::vector<Modification>::iterator cmod = modifications.begin(); cmod != modifications.end(); cmod++)
+        {
+            r.modified_count[cmod->mod_code] = this->modified_count.at(cmod->mod_code) + c.modified_count.at(cmod->mod_code);
+            // std::cerr << this->modified_count.at(cmod->mod_code) << '+' << c.modified_count.at(cmod->mod_code) << '=' << r.modified_count[cmod->mod_code] << '@' << cmod->mod_code << '\n';
+        }
+        return r;
+    }
     _mod_count_t(const _mod_count_t &c)
     {
         this->canonical_count = c.canonical_count;
@@ -359,9 +370,9 @@ public:
     std::map<mod_key, _mod_count_t>::iterator begin() { return mod_count_store.begin(); }
     std::map<mod_key, _mod_count_t>::iterator end() { return mod_count_store.end(); }
     std::size_t size() { return this->mod_count_store.size(); }
-    std::map<mod_key, _mod_count_t>::iterator from(int pos)
+    std::map<mod_key, _mod_count_t>::iterator from(int pos, int read_is_rev = -1, int ps = -1, int hp = -1)
     {
-        std::map<mod_key, _mod_count_t>::iterator it = mod_count_store.lower_bound(mod_key(pos));
+        std::map<mod_key, _mod_count_t>::iterator it = mod_count_store.lower_bound(mod_key(pos, read_is_rev, ps, hp));
         // if (it != this->end())
         // {
         //     std::cout << this->begin()->second << ' ';
@@ -371,6 +382,7 @@ public:
         // assert(it != this->end());
         return it;
     }
+    std::string output_mod_joinstrand(char const *ref_name, int pos, Modification &cmod);
     void check()
     {
         if (!mod_count_store.empty())
@@ -441,6 +453,88 @@ void ModCounter::erase_upto(int upto)
     }
 }
 
+std::string mod_count_to_str(int mod_code, int mod_count, int called_sites)
+{
+    std::stringstream ss;
+    if (mod_code <= 0)
+    {
+        ss << -mod_code;
+    }
+    else
+    {
+        ss << (char)mod_code;
+    }
+    ss << '\t' << mod_count;
+    double mod_freq = (double)mod_count / (double)called_sites;
+    ss << '\t' << mod_freq << '\n';
+    return ss.str();
+}
+
+std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos, Modification &cmod)
+{
+    std::stringstream ss, out_stream;
+
+    if (header_flag)
+    {
+        out_stream << "#chromosome\tstart\tend\thaplotype\tphase_set\tcalled_reads\tother_reads\tmodification\tmodified_reads\tmodified_prop\n";
+        header_flag = 0;
+    }
+
+    ss << chrom << '\t' << pos + 2 - cmod.fwd_context.length() << '\t' << pos + 2 << '\t';
+
+    int fwd_pos = pos - cmod.fwd_context.length() + cmod.fwd_ctx_pos + 1;
+    int rev_pos = pos - cmod.fwd_context.length() + cmod.rev_ctx_pos + 1;
+    std::map<std::pair<int, int>, _mod_count_t> cnts;
+    // std::cerr << "pos : " << pos << " +" << fwd_pos << " -" << rev_pos << '\n';
+    for (std::map<mod_key, _mod_count_t>::iterator it = this->from(fwd_pos, 0); it != this->to(fwd_pos); it++)
+    {
+        // std::cerr << "fwd it: " << it->first << " -  " << it->second << '\n';
+        if (it->first.read_isrev == 0)
+        {
+            // std::cerr << it->first.ps << ',' << it->first.hp << " +@ " << cnts[std::pair(it->first.ps, it->first.hp)] << " + " << it->second;
+
+            cnts[std::pair(it->first.ps, it->first.hp)] = cnts[std::pair(it->first.ps, it->first.hp)] + it->second;
+            // std::cerr << " = " << cnts[std::pair(it->first.ps, it->first.hp)] << '\n';
+        }
+    }
+
+    for (std::map<mod_key, _mod_count_t>::iterator it = this->from(rev_pos, 0); it != this->to(rev_pos); it++)
+    {
+        if (it->first.read_isrev == 1)
+        {
+            // std::cerr << it->first.ps << ',' << it->first.hp << " -@ " << cnts[std::pair(it->first.ps, it->first.hp)] << " + " << it->second;
+            cnts[std::pair(it->first.ps, it->first.hp)] = cnts[std::pair(it->first.ps, it->first.hp)] + it->second;
+            // std::cerr << " = " << cnts[std::pair(it->first.ps, it->first.hp)] << '\n';
+        }
+    }
+
+    for (std::map<std::pair<int, int>, _mod_count_t>::iterator cnts_it = cnts.begin(); cnts_it != cnts.end(); cnts_it++)
+    {
+        int called_sites = cnts_it->second.canonical_count;
+        for (std::map<int, int>::iterator it = cnts_it->second.modified_count.begin();
+             it != cnts_it->second.modified_count.end(); it++)
+
+        {
+            called_sites += it->second;
+        }
+
+        out_stream << ss.str();
+        if (cnts_it->first.first >= 0)
+        {
+            out_stream << cnts_it->first.second << '\t' << cnts_it->first.first << '\t';
+        }
+        else
+        {
+            out_stream << "N\t-1\t";
+        }
+
+        out_stream << called_sites << '\t' << cnts_it->second.other_count << '\t';
+
+        out_stream << mod_count_to_str(cmod.mod_code, cnts_it->second.modified_count[cmod.mod_code], called_sites);
+    }
+
+    return out_stream.str();
+}
 void ModCounter::add_canonical(int pos, int read_is_rev, int ps, int hp)
 {
     mod_key k(pos, read_is_rev, ps, hp);
@@ -540,23 +634,6 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
 
         // add_mod(mod_id, mod_counts);
     }
-}
-
-std::string mod_count_to_str(int mod_code, int mod_count, int called_sites)
-{
-    std::stringstream ss;
-    if (mod_code <= 0)
-    {
-        ss << -mod_code;
-    }
-    else
-    {
-        ss << (char)mod_code;
-    }
-    ss << '\t' << mod_count;
-    double mod_freq = (double)mod_count / (double)called_sites;
-    ss << '\t' << mod_freq << '\n';
-    return ss.str();
 }
 
 std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id, _mod_count_t &cnts, const char *chrom, int out_mod_code = 0)
@@ -809,6 +886,7 @@ int main(int argc, char **argv)
         }
         if (tid != prev_tid)
         {
+            mod_counter.clear();
             if (ref_seq)
             {
                 free(ref_seq);
@@ -847,30 +925,36 @@ int main(int argc, char **argv)
                     plp_procced = true;
                 }
             }
-            mod_counter.check();
-            // if (mod_counter.size() > 0)
-            // {
-            //     std::cout << "\nAlku : " << mod_counter.begin()->second << '\n';
-            //     auto apu = mod_counter.from(0);
-            //     std::cout << "0 paikan toinen: "
-            //               << apu->second;
-            //     std::cout << "\nAlku uudelleen: " << mod_counter.begin()->second << '\n';
-            //     // assert(mod_counter.begin() == mod_counter.from(0));
-            // }
-
-            for (std::map<mod_key, _mod_count_t>::iterator it = mod_counter.from(pos);
-                 it != mod_counter.to(pos); it++)
+            // mod_counter.check();
+            //  if (mod_counter.size() > 0)
+            //  {
+            //      std::cout << "\nAlku : " << mod_counter.begin()->second << '\n';
+            //      auto apu = mod_counter.from(0);
+            //      std::cout << "0 paikan toinen: "
+            //                << apu->second;
+            //      std::cout << "\nAlku uudelleen: " << mod_counter.begin()->second << '\n';
+            //      // assert(mod_counter.begin() == mod_counter.from(0));
+            //  }
+            if (split_strand_flag)
             {
-                assert(it != mod_counter.end());
-                if ((m_fwd == 0 && it->first.read_isrev == 0) || ((m_rev == 0 && it->first.read_isrev == 1)))
+                for (std::map<mod_key, _mod_count_t>::iterator it = mod_counter.from(pos);
+                     it != mod_counter.to(pos); it++)
                 {
-                    // std::cout << m_fwd << m_rev << it->first.read_isrev << '\n';
+                    assert(it != mod_counter.end());
+                    if ((m_fwd == 0 && it->first.read_isrev == 0) || ((m_rev == 0 && it->first.read_isrev == 1)))
+                    {
 
-                    // std::cout << mod_counter << '\n'
-                    //           << it->first << ':' << it->second << '\n'
-                    //           << mod_counter;
-                    output_mod(std::cout, it->first, it->second, ref_seq_name, cmod->mod_code);
+                        output_mod(std::cout, it->first, it->second, ref_seq_name, cmod->mod_code);
+                    }
                 }
+            }
+            else
+            {
+                if ((cmod->fwd_ctx_pos < cmod->rev_ctx_pos && m_rev == 0) ||
+                    (cmod->fwd_ctx_pos > cmod->rev_ctx_pos && m_fwd == 0))
+                {
+                    std::cout << mod_counter.output_mod_joinstrand(ref_seq_name, pos, *cmod);
+                };
             }
         }
         // if (mod_counter.size() > 10000)
@@ -900,9 +984,12 @@ int main(int argc, char **argv)
         //     }
         //     std::cerr << '\n';
         // }
-        // mod_counter.erase_upto(pos);
+        if (mod_counter.begin()->first.pos < (pos - 100))
+        {
+            mod_counter.erase_upto(pos - 10);
+        }
         // assert(mod_counter.size() == 0);
-        mod_counter.clear();
+        // mod_counter.clear();
     }
     bam_plp_destroy(iter);
 
