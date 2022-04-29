@@ -22,4 +22,4 @@ trap _cleanup EXIT
 WRKDIR=$(dirname "$(readlink -f $0)")
 bash $WRKDIR/run_region.sh >$TEMPDIR/run_region_cur.out
 
-diff $TEMPDIR/run_region_cur.out $WRKDIR/run_region.out
+diff --minimal $TEMPDIR/run_region_cur.out $WRKDIR/run_region.out

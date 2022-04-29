@@ -6,7 +6,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Tue Apr 26 12:34:33 2022
+# Make data base, printed on Thu Apr 28 15:35:13 2022
 
 # Variables
 
@@ -117,7 +117,7 @@ CMAKE_PREFIX_PATH = /scratch/kpalin/miniconda3:/scratch/kpalin/miniconda3/x86_64
 # environment
 LS_COLORS = 
 # environment
-SSH_AUTH_SOCK = /run/user/1094701/vscode-ssh-auth-sock-606830465
+SSH_AUTH_SOCK = /run/user/1094701/vscode-ssh-auth-sock-256692371
 # environment
 SIZE = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-size
 # automatic
@@ -133,7 +133,7 @@ VSCODE_PIPE_LOGGING = true
 # environment
 PWD = /home/kpalin/software/bam_to_mods
 # environment
-VSCODE_IPC_HOOK_CLI = /run/user/1094701/vscode-ipc-9600b0ae-8934-4c19-bd8c-08b1b3bf580f.sock
+VSCODE_IPC_HOOK_CLI = /run/user/1094701/vscode-ipc-132ddca5-e60f-4e4c-856c-4005d7cf316c.sock
 # automatic
 *D = $(patsubst %/,%,$(dir $*))
 # environment
@@ -288,9 +288,9 @@ HOST = x86_64-conda-linux-gnu
 
 # Directories
 
-# . (device 52, inode -9178197162812555364): 16 files, no impossibilities.
+# . (device 52, inode -9178197162812555364): 23 files, no impossibilities.
 
-# 16 files, no impossibilities in 1 directories.
+# 23 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -307,27 +307,27 @@ all: bam_to_mods
 
 obj/bam_mods_to_text.o: src/bam_mods_to_text.cpp
 #  Implicit rule search has not been done.
-#  Last modified 2022-04-26 12:33:46.445993
+#  Last modified 2022-04-28 12:27:09.166995
 #  File has been updated.
 #  Successfully updated.
 #  recipe to execute (from 'Makefile', line 9):
-	$(CXX)  -c  -o $@ $^  -lhts ${CFLAGS} $(LIBS) -lpthread -O0  -fno-tree-vectorize -Wall -g
-	#$(CXX) -O0  -c -g -o $@ $^  -lhts ${CFLAGS} $(LIBS) -lpthread 
+	$(GXX)  -c  -o $@ $^  -lhts $(CFLAGS) $(LIBS) -lpthread -O0  -fno-tree-vectorize -Wall -g
+	
 
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-04-26 12:34:03.72815
+#  Last modified 2022-04-28 12:03:28.981384
 #  File has been updated.
 #  Successfully updated.
 
 bam_to_mods: obj/bam_mods_to_text.o
 #  Implicit rule search has not been done.
-#  Last modified 2022-04-26 12:33:47.066613
+#  Last modified 2022-04-28 12:27:10.584983
 #  File has been updated.
 #  Successfully updated.
 #  recipe to execute (from 'Makefile', line 5):
-	$(CXX) -O0  -g -o $@ obj/bam_mods_to_text.o  -lhts $(LDFLAGS)  $(LIBS) -lpthread
+	$(GXX) -O0  -g -o $@ obj/bam_mods_to_text.o  -lhts $(LDFLAGS)  $(LIBS) -lpthread
 
 # Not a target:
 .DEFAULT:
@@ -338,7 +338,7 @@ bam_to_mods: obj/bam_mods_to_text.o
 # Not a target:
 src/bam_mods_to_text.cpp:
 #  Implicit rule search has been done.
-#  Last modified 2022-04-26 12:33:40.989613
+#  Last modified 2022-04-28 12:05:38.477811
 #  File has been updated.
 #  Successfully updated.
 
@@ -346,7 +346,7 @@ clean:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  recipe to execute (from 'Makefile', line 13):
+#  recipe to execute (from 'Makefile', line 15):
 	rm obj/bam_mods_to_text.o bam_to_mods
 
 # files hash-table stats:
@@ -357,12 +357,12 @@ clean:
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 24 / storage = 257 B / avg = 10 B
-# current buf: size = 8162 B / used = 257 B / count = 24 / avg = 10 B
+# strcache buffers: 1 (0) / strings = 31 / storage = 320 B / avg = 10 B
+# current buf: size = 8162 B / used = 320 B / count = 31 / avg = 10 B
 
-# strcache performance: lookups = 36 / hit rate = 33%
+# strcache performance: lookups = 43 / hit rate = 27%
 # hash-table stats:
-# Load=24/8192=0%, Rehash=0, Collisions=1/36=3%
-# Finished Make data base on Tue Apr 26 12:34:33 2022
+# Load=31/8192=0%, Rehash=0, Collisions=1/43=2%
+# Finished Make data base on Thu Apr 28 15:35:13 2022
 
  
