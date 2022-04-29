@@ -6,7 +6,7 @@ bam_to_mods: obj/bam_mods_to_text.o
 
 
 obj/bam_mods_to_text.o: src/bam_mods_to_text.cpp
-	$(GXX)  -c  -o $@ $^  -lhts $(CFLAGS) $(LIBS) -lpthread -O0  -fno-tree-vectorize -Wall -g
+	$(GXX)  -c  -o $@ $^  -lhts $(CFLAGS) $(LIBS) -lpthread 
 	
 # -O0  -fno-tree-vectorize -Wall -g
 # $(CXX) -O0  -c -g -o $@ $^  -lhts ${CFLAGS} $(LIBS) -lpthread 

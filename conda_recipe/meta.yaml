@@ -1,0 +1,33 @@
+{% set name = "bam_to_mods" %}
+{% set version = "0.1.1" %}
+
+
+package:
+  name: "{{ name|lower }}"
+  version: "{{ version }}"
+
+source:
+  path: ../
+
+
+build:
+  number: 0
+
+requirements:
+  host:
+    - htslib >=1.14
+  build:
+    - {{ compiler('cxx') }}
+    - make
+
+
+test:
+  commands:
+    - bam_to_mods -h 
+
+about:
+  home: https://github.com/kpalin/bam_to_mods
+  license: GPL-2.0-or-later
+  license_family: GPL
+  summary: "Calling methylation levels from bam with Ml and Mm tags."
+#  doc_url: http://abacas.sourceforge.net/documentation.html

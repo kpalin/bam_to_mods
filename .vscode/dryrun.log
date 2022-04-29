@@ -1,6 +1,6 @@
-make --dry-run --always-make --keep-going --print-directory
+make --dry-run --keep-going --print-directory
 make: Entering directory '/home/kpalin/software/bam_to_mods'
-/scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-g++  -c  -o obj/bam_mods_to_text.o src/bam_mods_to_text.cpp  -lhts -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include  -lpthread -O0  -fno-tree-vectorize -Wall -g
+/scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-g++  -c  -o obj/bam_mods_to_text.o src/bam_mods_to_text.cpp  -lhts -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include  -lpthread 
 /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-g++ -O0  -g -o bam_to_mods obj/bam_mods_to_text.o  -lhts -Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,-rpath,/scratch/kpalin/miniconda3/lib -Wl,-rpath-link,/scratch/kpalin/miniconda3/lib -L/scratch/kpalin/miniconda3/lib   -lpthread
 make: Leaving directory '/home/kpalin/software/bam_to_mods'
  

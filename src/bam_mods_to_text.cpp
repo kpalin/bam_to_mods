@@ -760,6 +760,7 @@ int parse_options(int argc, char **argv)
             {"exclude", required_argument, 0, 'E'},
             {"mod", required_argument, 0, 'm'},
             {"region", required_argument, 0, 'R'},
+            {"help", no_argument, 0, 'h'},
             {0, 0, 0, 0}};
     while (1)
     {
@@ -767,7 +768,7 @@ int parse_options(int argc, char **argv)
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long(argc, argv, "r:i:c:b:m:q:E:R:",
+        c = getopt_long(argc, argv, "r:i:c:b:m:q:E:R:h",
                         long_options, &option_index);
         // std::cerr << "getopt_long ret: " << c << '\n';
         /* Detect the end of the options. */
@@ -826,6 +827,8 @@ int parse_options(int argc, char **argv)
             // printf("option -R with value `%s'\n", optarg);
             target_region = strdup(optarg);
             break;
+        case 'h':
+            return 2;
         case '?':
             /* getopt_long already printed an error message. */
             return 1;
@@ -849,20 +852,27 @@ int parse_options(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
-    if (parse_options(argc, argv))
+    if (int r = parse_options(argc, argv))
     {
-        fprintf(stderr, "usage: %s [-c %d] [-b %d]  [-q %d] [-E %d] [-m CG+m.0] [-R chr1:1-100] [--no_header] [--no_phase] -r ref.fasta -i input.cram\n\n"
-                        " -c    Minimum probability of modification called modified (range 0-255)\n"
-                        " -b    Minimum base quality considered.\n"
-                        " -q    Minimum mapping quality considered.\n"
-                        " -E    Exclude all reads matching any of these SAM flags.\n"
-                        " -R    Genomic region to consider.\n"
-                        " -r    FAI indexed fasta file of the reference genome.\n"
-                        " -i    Input SAM/BAM/CRAM file. Indexed if used with -R.\n"
-                        " -m    DNA modification to consider. Format: 'CG+m.0' for methylation 'm' of C:s on position '0' \n"
-                        "       of context 'CG' in forward strand. Can be given multiple times. If none given, 'CG+m.0' is used.\n",
+        fprintf(stderr, "usage: %s [-c %d] [-b %d]  [-q %d] [-E %d] [-m CG+m.0] [-R chr1:1-100] [--no_header] [--no_phase] [--split_strand] -r ref.fasta -i input.cram\n\n"
+                        " -c|--min_mod_prob Minimum probability of modification called modified (range 0-255)\n"
+                        " -b|--min_baseq    Minimum base quality considered.\n"
+                        " -q|--min_mapq     Minimum mapping quality considered.\n"
+                        " -E|--exclude      Exclude all reads matching any of these SAM flags.\n"
+                        " -R|--region       Genomic region to consider.\n"
+                        " -r|--reference_fasta   FAI indexed fasta file of the reference genome.\n"
+                        " -i|--input        Input SAM/BAM/CRAM file. Indexed if used with -R.\n"
+                        " -m|--mod          DNA modification to consider. Format: 'CG+m.0' for methylation 'm' of C:s on position '0' \n"
+                        "                   of context 'CG' in forward strand. Can be given multiple times. If none given, 'CG+m.0' is used.\n"
+                        " --split_strand    Report modifications on either strand separately.\n"
+                        " --no_header       Don't output header text.\n"
+                        " --no_phase        Don't use HP and PS tags to separate phased reads.\n"
+                        " -h|--help         Print this help text.\n",
+
                 argv[0], min_mod_prob, min_baseq, min_mapq, exclude_filter);
-        exit(1);
+        // Don't fail if asked for help.
+
+        exit(r == 2 ? 0 : 1);
     }
 
     // First argument: reference genome

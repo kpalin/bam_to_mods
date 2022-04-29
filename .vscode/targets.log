@@ -6,7 +6,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Thu Apr 28 15:35:13 2022
+# Make data base, printed on Fri Apr 29 11:38:51 2022
 
 # Variables
 
@@ -275,12 +275,12 @@ VSCODE_EXTHOST_WILL_SEND_SOCKET = true
 # environment
 DEBUG_CXXFLAGS = -fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include
 # environment
- 
 _CE_CONDA = 
 # environment
 HOST = x86_64-conda-linux-gnu
 # variable set hash-table stats:
-# Load=134/1024=13%, Rehash=0, Collisions=18/159=11%
+# Load=134/1024=13%, Rehash=0, Collisions=18/165=11%
+ 
 
 # Pattern-specific Variable Values
 
@@ -288,9 +288,9 @@ HOST = x86_64-conda-linux-gnu
 
 # Directories
 
-# . (device 52, inode -9178197162812555364): 23 files, no impossibilities.
+# . (device 52, inode -9178197162812555364): 21 files, no impossibilities.
 
-# 23 files, no impossibilities in 1 directories.
+# 21 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -303,29 +303,58 @@ all: bam_to_mods
 #  Implicit rule search has been done.
 #  File does not exist.
 #  File has been updated.
-#  Successfully updated.
+#  Needs to be updated (-q is set).
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/6=0%
 
 obj/bam_mods_to_text.o: src/bam_mods_to_text.cpp
 #  Implicit rule search has not been done.
-#  Last modified 2022-04-28 12:27:09.166995
+#  Implicit/static pattern stem: ''
+#  File does not exist.
 #  File has been updated.
-#  Successfully updated.
+#  Needs to be updated (-q is set).
+# automatic
+# @ := obj/bam_mods_to_text.o
+# automatic
+# % := 
+# automatic
+# * := 
+# automatic
+# + := src/bam_mods_to_text.cpp
+# automatic
+# | := 
+# automatic
+# < := src/bam_mods_to_text.cpp
+# automatic
+# ^ := src/bam_mods_to_text.cpp
+# automatic
+# ? := src/bam_mods_to_text.cpp
+# variable set hash-table stats:
+# Load=8/32=25%, Rehash=0, Collisions=1/16=6%
 #  recipe to execute (from 'Makefile', line 9):
-	$(GXX)  -c  -o $@ $^  -lhts $(CFLAGS) $(LIBS) -lpthread -O0  -fno-tree-vectorize -Wall -g
+	$(GXX)  -c  -o $@ $^  -lhts $(CFLAGS) $(LIBS) -lpthread 
 	
+
+# Not a target:
+.SUFFIXES:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
 
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-04-28 12:03:28.981384
+#  Last modified 2022-04-29 11:23:00.833626
 #  File has been updated.
 #  Successfully updated.
 
 bam_to_mods: obj/bam_mods_to_text.o
 #  Implicit rule search has not been done.
-#  Last modified 2022-04-28 12:27:10.584983
+#  File does not exist.
 #  File has been updated.
-#  Successfully updated.
+#  Needs to be updated (-q is set).
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/6=0%
 #  recipe to execute (from 'Makefile', line 5):
 	$(GXX) -O0  -g -o $@ obj/bam_mods_to_text.o  -lhts $(LDFLAGS)  $(LIBS) -lpthread
 
@@ -338,7 +367,7 @@ bam_to_mods: obj/bam_mods_to_text.o
 # Not a target:
 src/bam_mods_to_text.cpp:
 #  Implicit rule search has been done.
-#  Last modified 2022-04-28 12:05:38.477811
+#  Last modified 2022-04-29 11:21:57.154068
 #  File has been updated.
 #  Successfully updated.
 
@@ -350,19 +379,19 @@ clean:
 	rm obj/bam_mods_to_text.o bam_to_mods
 
 # files hash-table stats:
-# Load=8/1024=1%, Rehash=0, Collisions=0/24=0%
+# Load=8/1024=1%, Rehash=0, Collisions=0/25=0%
 # VPATH Search Paths
 
 # No 'vpath' search paths.
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 31 / storage = 320 B / avg = 10 B
-# current buf: size = 8162 B / used = 320 B / count = 31 / avg = 10 B
+# strcache buffers: 1 (0) / strings = 30 / storage = 321 B / avg = 10 B
+# current buf: size = 8162 B / used = 321 B / count = 30 / avg = 10 B
 
-# strcache performance: lookups = 43 / hit rate = 27%
+# strcache performance: lookups = 42 / hit rate = 28%
 # hash-table stats:
-# Load=31/8192=0%, Rehash=0, Collisions=1/43=2%
-# Finished Make data base on Thu Apr 28 15:35:13 2022
+# Load=30/8192=0%, Rehash=0, Collisions=1/42=2%
+# Finished Make data base on Fri Apr 29 11:38:51 2022
 
  
