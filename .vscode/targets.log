@@ -6,7 +6,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Fri Apr 29 11:38:51 2022
+# Make data base, printed on Wed May  4 12:46:29 2022
 
 # Variables
 
@@ -14,6 +14,8 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 GNUMAKEFLAGS := 
 # automatic
 <D = $(patsubst %/,%,$(dir $<))
+# makefile (from 'Makefile', line 26)
+RELEXE = $(RELDIR)/$(EXE)
 # automatic
 ?F = $(notdir $?)
 # environment
@@ -34,6 +36,8 @@ OBJCOPY = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-objcopy
 CPPFLAGS = -DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /scratch/kpalin/miniconda3/include
 # automatic
 @D = $(patsubst %/,%,$(dir $@))
+# makefile (from 'Makefile', line 12)
+EXE = bam_to_mods
 # automatic
 @F = $(notdir $@)
 # default
@@ -50,10 +54,12 @@ NM = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-nm
 VSCODE_NLS_CONFIG = {"locale":"en","availableLanguages":{}}
 # environment
 _ = /scratch/kpalin/.vscode-server/bin/dfd34e8260c270da74b5c2d86d61aee4b6d56977/node
-# environment
-CFLAGS = -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include
+# makefile (from 'Makefile', line 5)
+CFLAGS = -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include -Wall
 # automatic
 ?D = $(patsubst %/,%,$(dir $?))
+# makefile (from 'Makefile', line 25)
+RELDIR = release
 # makefile (from 'Makefile', line 1)
 MAKEFILE_LIST :=  Makefile
 # environment
@@ -66,14 +72,18 @@ GCC = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gcc
 GCC_NM = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gcc-nm
 # environment
 CXXFLAGS = -fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include
+# makefile (from 'Makefile', line 20)
+DBGCFLAGS = $(DEBUG_CXXFLAGS) -g -O0 -DDEBUG  -fno-tree-vectorize  -Wextra
 # environment
 ADDR2LINE = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-addr2line
 # environment
 VSCODE_VERBOSE_LOGGING = true
-# environment
-CC = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-cc
+# makefile (from 'Makefile', line 4)
+CC := /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-g++
 # environment
 CXX_FOR_BUILD = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-c++
+# makefile (from 'Makefile', line 11)
+OBJS = $(SRCS:.cpp=.o)
 # environment
 REF_PATH = /mnt/cg8/reference-genomes/GRCh38_no_alt/GRCh38_no_alt.fasta
 # environment
@@ -92,6 +102,8 @@ ELFEDIT = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-elfedit
 SSH_CONNECTION = 128.214.8.3 40074 128.214.145.22 22
 # environment
 PATH = /scratch/kpalin/.vscode-server/bin/dfd34e8260c270da74b5c2d86d61aee4b6d56977/bin/remote-cli:/home/kpalin/.cargo/bin:/scratch/kpalin/miniconda3/bin:/scratch/kpalin/miniconda3/condabin:/home/kpalin/.aspera/connect/bin:/home/kpalin/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+# makefile (from 'Makefile', line 28)
+RELCFLAGS = $(CXXFLAGS) -O3 -DNDEBUG
 # environment
 LD = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-ld
 # environment
@@ -130,6 +142,8 @@ CONDA_EXE = /scratch/kpalin/miniconda3/bin/conda
 HISTFILESIZE = 10000000
 # environment
 VSCODE_PIPE_LOGGING = true
+# makefile (from 'Makefile', line 18)
+DBGEXE = $(DBGDIR)/$(EXE)
 # environment
 PWD = /home/kpalin/software/bam_to_mods
 # environment
@@ -144,6 +158,8 @@ HISTTIMEFORMAT = %F %T
 VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
 # environment
 HOME = /home/kpalin
+# makefile (from 'Makefile', line 19)
+DBGOBJS = $(addprefix $(DBGDIR)/, $(OBJS))
 # environment
 LESSCLOSE = /usr/bin/lesspipe %s %s
 # environment
@@ -158,6 +174,8 @@ build_alias = x86_64-conda-linux-gnu
 +F = $(notdir $+)
 # environment
 CXXFILT = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-c++filt
+# makefile (from 'Makefile', line 27)
+RELOBJS = $(addprefix $(RELDIR)/, $(OBJS))
 # environment
 VSCODE_HANDLES_UNCAUGHT_ERRORS = true
 # automatic
@@ -172,6 +190,8 @@ MAKE = $(MAKE_COMMAND)
 MAKECMDGOALS := all
 # environment
 CONDA_TOOLCHAIN_HOST = x86_64-conda-linux-gnu
+# makefile (from 'Makefile', line 10)
+SRCS = bam_mods_to_text.cpp
 # environment
 SHLVL = 4
 # environment
@@ -246,6 +266,8 @@ JAVA_LD_LIBRARY_PATH = /scratch/kpalin/miniconda3/lib/server
 CONDA_PYTHON_EXE = /scratch/kpalin/miniconda3/bin/python
 # environment
 DEBUG_CPPFLAGS = -D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /scratch/kpalin/miniconda3/include
+# makefile (from 'Makefile', line 13)
+LIBS := -lhts  -lpthread
 # automatic
 ^F = $(notdir $^)
 # default
@@ -266,6 +288,7 @@ host_alias = x86_64-conda-linux-gnu
 MAKE_HOST := x86_64-pc-linux-gnu
 # environment
 CC_FOR_BUILD = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-cc
+ 
 # environment
 GCC_RANLIB = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gcc-ranlib
 # environment
@@ -274,13 +297,14 @@ LANG = C
 VSCODE_EXTHOST_WILL_SEND_SOCKET = true
 # environment
 DEBUG_CXXFLAGS = -fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include
+# makefile (from 'Makefile', line 17)
+DBGDIR = debug
 # environment
 _CE_CONDA = 
 # environment
 HOST = x86_64-conda-linux-gnu
 # variable set hash-table stats:
-# Load=134/1024=13%, Rehash=0, Collisions=18/165=11%
- 
+# Load=146/1024=14%, Rehash=0, Collisions=25/203=12%
 
 # Pattern-specific Variable Values
 
@@ -288,52 +312,79 @@ HOST = x86_64-conda-linux-gnu
 
 # Directories
 
-# . (device 52, inode -9178197162812555364): 21 files, no impossibilities.
+# . (device 52, inode -9178197162812555364): 24 files, no impossibilities.
+# src (device 52, inode -9178197167100653794): No files, no impossibilities so far.
 
-# 21 files, no impossibilities in 1 directories.
+# 24 files, no impossibilities in 2 directories.
 
 # Implicit Rules
 
-# No implicit rules.
+debug/%.o: src/%.cpp
+#  recipe to execute (from 'Makefile', line 44):
+	$(CXX) -c $(CFLAGS) $(DBGCFLAGS) -o $@ $<
+
+release/%.o: src/%.cpp
+#  recipe to execute (from 'Makefile', line 55):
+	$(CXX) -c $(CFLAGS) $(RELCFLAGS) -o $@ $<
+
+# 2 implicit rules, 0 (0.0%) terminal.
 
 # Files
 
-all: bam_to_mods
+all: prep release
+#  Phony target (prerequisite of .PHONY).
 #  Command line target.
-#  Implicit rule search has been done.
+#  Implicit rule search has not been done.
 #  File does not exist.
 #  File has been updated.
 #  Needs to be updated (-q is set).
 # variable set hash-table stats:
-# Load=0/32=0%, Rehash=0, Collisions=0/6=0%
+# Load=0/32=0%, Rehash=0, Collisions=0/5=0%
 
-obj/bam_mods_to_text.o: src/bam_mods_to_text.cpp
+.PHONY: all clean debug prep release remake
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+release/bam_mods_to_text.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+prep:
+#  Phony target (prerequisite of .PHONY).
 #  Implicit rule search has not been done.
 #  Implicit/static pattern stem: ''
 #  File does not exist.
 #  File has been updated.
 #  Needs to be updated (-q is set).
 # automatic
-# @ := obj/bam_mods_to_text.o
+# @ := prep
 # automatic
 # % := 
 # automatic
 # * := 
 # automatic
-# + := src/bam_mods_to_text.cpp
+# + := 
 # automatic
 # | := 
 # automatic
-# < := src/bam_mods_to_text.cpp
+# < := 
 # automatic
-# ^ := src/bam_mods_to_text.cpp
+# ^ := 
 # automatic
-# ? := src/bam_mods_to_text.cpp
+# ? := 
 # variable set hash-table stats:
-# Load=8/32=25%, Rehash=0, Collisions=1/16=6%
-#  recipe to execute (from 'Makefile', line 9):
-	$(GXX)  -c  -o $@ $^  -lhts $(CFLAGS) $(LIBS) -lpthread 
-	
+# Load=8/32=25%, Rehash=0, Collisions=1/13=8%
+#  recipe to execute (from 'Makefile', line 61):
+	@mkdir -p $(DBGDIR) $(RELDIR)
+
+remake: clean all
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
 
 # Not a target:
 .SUFFIXES:
@@ -344,19 +395,21 @@ obj/bam_mods_to_text.o: src/bam_mods_to_text.cpp
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-04-29 11:23:00.833626
+#  Last modified 2022-05-04 12:45:38.207256
 #  File has been updated.
 #  Successfully updated.
 
-bam_to_mods: obj/bam_mods_to_text.o
+debug: debug/bam_to_mods
+#  Phony target (prerequisite of .PHONY).
 #  Implicit rule search has not been done.
 #  File does not exist.
-#  File has been updated.
-#  Needs to be updated (-q is set).
-# variable set hash-table stats:
-# Load=0/32=0%, Rehash=0, Collisions=0/6=0%
-#  recipe to execute (from 'Makefile', line 5):
-	$(GXX) -O0  -g -o $@ obj/bam_mods_to_text.o  -lhts $(LDFLAGS)  $(LIBS) -lpthread
+#  File has not been updated.
+
+release: release/bam_to_mods
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
 
 # Not a target:
 .DEFAULT:
@@ -364,34 +417,48 @@ bam_to_mods: obj/bam_mods_to_text.o
 #  Modification time never checked.
 #  File has not been updated.
 
-# Not a target:
-src/bam_mods_to_text.cpp:
-#  Implicit rule search has been done.
-#  Last modified 2022-04-29 11:21:57.154068
-#  File has been updated.
-#  Successfully updated.
-
 clean:
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  recipe to execute (from 'Makefile', line 66):
+	rm -f $(RELEXE) $(RELOBJS) $(DBGEXE) $(DBGOBJS)
+
+debug/bam_to_mods: debug/bam_mods_to_text.o
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
-#  recipe to execute (from 'Makefile', line 15):
-	rm obj/bam_mods_to_text.o bam_to_mods
+#  recipe to execute (from 'Makefile', line 41):
+	$(CXX) $(LIBS) $(LDFLAGS)  -o $(DBGEXE) $^
+
+# Not a target:
+debug/bam_mods_to_text.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+release/bam_to_mods: release/bam_mods_to_text.o
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'Makefile', line 52):
+	$(CXX) $(LIBS) $(LDFLAGS)  -o $(RELEXE) $^
 
 # files hash-table stats:
-# Load=8/1024=1%, Rehash=0, Collisions=0/25=0%
+# Load=14/1024=1%, Rehash=0, Collisions=0/47=0%
 # VPATH Search Paths
 
 # No 'vpath' search paths.
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 30 / storage = 321 B / avg = 10 B
-# current buf: size = 8162 B / used = 321 B / count = 30 / avg = 10 B
+# strcache buffers: 1 (0) / strings = 40 / storage = 429 B / avg = 10 B
+# current buf: size = 8162 B / used = 429 B / count = 40 / avg = 10 B
 
-# strcache performance: lookups = 42 / hit rate = 28%
+# strcache performance: lookups = 71 / hit rate = 43%
 # hash-table stats:
-# Load=30/8192=0%, Rehash=0, Collisions=1/42=2%
-# Finished Make data base on Fri Apr 29 11:38:51 2022
+# Load=40/8192=0%, Rehash=0, Collisions=1/71=1%
+# Finished Make data base on Wed May  4 12:46:30 2022
 
  

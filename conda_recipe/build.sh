@@ -12,5 +12,5 @@ set -o errexit
 # Die if any part of a pipe fails
 set -o pipefail
 
-make
-cp bam_to_mods "${PREFIX}/bin/"
+make release
+cp release/bam_to_mods "${PREFIX}/bin/"

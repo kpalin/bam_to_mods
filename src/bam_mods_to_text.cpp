@@ -40,14 +40,17 @@ DEALINGS IN THE SOFTWARE.  */
 #include <string>
 #include <algorithm>
 #include <vector>
+#include <set>
 
 static int header_flag = 1;
 static int split_strand_flag = 0;
 
 static int phase_flag = 1;
-static int min_mod_prob = 125;
+static int min_mod_prob = 209; // Ln odds 1.5  >81%
+static int max_mod_prob = 46;  // < 18.2%
 static int min_mapq = 20;
 static int min_baseq = 7;
+static int extra_hts_threads = 2;
 static int exclude_filter = (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP);
 // samtools view -F 1796 -u /mnt/cgnano/projects/promethion/kpalin/dev/Fam_c461_1_19_0711NK_meg/phase/longshot.Fam_c461_1_19_0711NK_meg.phased.cram chr9:170012-170012  |samtools mpileup -Q 7 -q 20 --output-extra PS - |grep  170012
 typedef struct
@@ -385,8 +388,9 @@ private:
 public:
     ModCounter(/* args */);
     ~ModCounter();
-    void add_canonical(int pos, int read_is_rev, int ps = -1, int hp = -1);
-
+    void add_canonical(int pos, int read_is_rev, int ps = -1, int hp = -1, int mod_id = 0, int mod_is_rev = 0);
+    void add_canonical_except(int pos, int read_is_rev,
+                              int ps, int hp, std::set<std::pair<int, int>> mods_id_rev);
     void add_modified(int pos, int read_is_rev, int ps, int hp, int mod_id, int const mod_is_rev = 0, double mod_expect = 1., bool is_modified = true);
 
     void add_other(int pos, int read_is_rev, int ps = -1, int hp = -1);
@@ -558,8 +562,30 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos, Modifi
 
     return out_stream.str();
 }
-/* Add count of canonical base for all modifications */
-void ModCounter::add_canonical(int pos, int read_is_rev, int ps, int hp)
+/* Add count of canonical base for all modifications or single one */
+void ModCounter::add_canonical(int pos, int read_is_rev,
+                               int ps, int hp, int mod_id, int mod_is_rev)
+{
+    mod_key k(pos, read_is_rev, ps, hp);
+    auto &mod_cnts = mod_count_store[k];
+
+    if (mod_id == 0)
+    {
+        for (std::map<int, int>::iterator it = mod_cnts.canonical_count.begin();
+             it != mod_cnts.canonical_count.end(); it++)
+        {
+            mod_cnts.add_canonical(it->first);
+        }
+    }
+    else
+    {
+        mod_cnts.add_canonical(mod_id, mod_is_rev);
+    }
+}
+
+/* Add count of canonical bases EXCEPT the listed */
+void ModCounter::add_canonical_except(int pos, int read_is_rev,
+                                      int ps, int hp, std::set<std::pair<int, int>> mods_id_rev)
 {
     mod_key k(pos, read_is_rev, ps, hp);
     auto &mod_cnts = mod_count_store[k];
@@ -567,14 +593,11 @@ void ModCounter::add_canonical(int pos, int read_is_rev, int ps, int hp)
     for (std::map<int, int>::iterator it = mod_cnts.canonical_count.begin();
          it != mod_cnts.canonical_count.end(); it++)
     {
-        mod_cnts.add_canonical(it->first);
+        if (mods_id_rev.count(std::make_pair(it->first, 0)) == 0)
+        {
+            mod_cnts.add_canonical(it->first);
+        }
     }
-
-    // for (auto i = mod_count_store.begin(); i != mod_count_store.end(); i++)
-    // {
-    //     std::cerr << "iter: " << i->first << " and " << i->second << '\n';
-    // }
-    // std::cerr << '|' << mod_count_store.size() << '|' << k << "->" << mod_count_store.at(k) << '\n';
 }
 
 void ModCounter::add_other(int pos, int read_is_rev, int ps, int hp)
@@ -638,48 +661,29 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
             if ((nm = bam_mods_at_qpos(p->b, p->qpos, m, mod, 5)) > 0)
             {
                 int j;
-
-                // putchar('[');
-                // if (nm > 1)
-                // {
-                //     std::cerr << pos << " -- " << bam_get_qname(p->b) << '\n';
-                //     for (j = 0; j < nm && j < 5; j++)
-                //     {
-                //         std::cerr << mod[j].canonical_base << ":" << (char)mod[j].modified_base << ":" << mod[j].qual << ":" << mod[j].strand << '\n';
-                //     }
-                //     std::cerr << mod_counter << '\n';
-                //     assert(nm <= 1);
-                // }
-
+                std::set<std::pair<int, int>> found_mods;
                 for (j = 0; j < nm && j < 5; j++)
                 {
-                    bool is_modified = (mod[j].qual >= min_mod_prob);
-                    double modified_expected = mod[j].qual / 255.;
-                    mod_counter.add_modified(pos, read_is_rev, ps, hp, mod[j].modified_base, mod[j].strand,
-                                             modified_expected, is_modified);
-
-                    // if (mod[j].qual >= min_mod_prob)
-                    // {
-                    //     mod_counter.add_modified(pos, read_is_rev, ps, hp, mod[j].modified_base, mod[j].strand);
-                    // }
-                    // else
-                    // {
-                    //     mod_counter.add_canonical(pos, read_is_rev, ps, hp);
-                    // }
+                    found_mods.insert(std::make_pair(mod[j].modified_base, mod[j].strand));
+                    if (mod[j].qual <= max_mod_prob)
+                    {
+                        mod_counter.add_canonical(pos, read_is_rev, ps, hp, mod[j].modified_base, mod[j].strand);
+                    }
+                    else
+                    {
+                        bool is_modified = (mod[j].qual >= min_mod_prob);
+                        double modified_expected = mod[j].qual / 255.;
+                        mod_counter.add_modified(pos, read_is_rev, ps, hp, mod[j].modified_base, mod[j].strand,
+                                                 modified_expected, is_modified);
+                    }
                 }
+                mod_counter.add_canonical_except(pos, read_is_rev, ps, hp, found_mods);
             }
             else
             { // There is no modifications called at this locus
                 mod_counter.add_canonical(pos, read_is_rev, ps, hp);
-                // putchar(c);
             }
         }
-        // if (pos == 170012 - 1)
-        // {
-        //     std::cerr << mod_counter << '\n';
-        // }
-
-        // add_mod(mod_id, mod_counts);
     }
 }
 
@@ -755,6 +759,7 @@ int parse_options(int argc, char **argv)
             {"reference_fasta", required_argument, 0, 'r'},
             {"input", required_argument, 0, 'i'},
             {"min_mod_prob", required_argument, 0, 'c'},
+            {"max_mod_prob", required_argument, 0, 'C'},
             {"min_baseq", required_argument, 0, 'b'},
             {"min_mapq", required_argument, 0, 'q'},
             {"exclude", required_argument, 0, 'E'},
@@ -768,7 +773,7 @@ int parse_options(int argc, char **argv)
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long(argc, argv, "r:i:c:b:m:q:E:R:h",
+        c = getopt_long(argc, argv, "r:i:c:C:b:m:q:E:R:@:h",
                         long_options, &option_index);
         // std::cerr << "getopt_long ret: " << c << '\n';
         /* Detect the end of the options. */
@@ -811,6 +816,9 @@ int parse_options(int argc, char **argv)
             // printf("option -c with value `%s'\n", optarg);
             min_mod_prob = atoi(optarg);
             break;
+        case 'C':
+            max_mod_prob = atoi(optarg);
+            break;
         case 'b':
             // printf("option -b with value `%s'\n", optarg);
             min_baseq = atoi(optarg);
@@ -826,6 +834,9 @@ int parse_options(int argc, char **argv)
         case 'R':
             // printf("option -R with value `%s'\n", optarg);
             target_region = strdup(optarg);
+            break;
+        case '@':
+            extra_hts_threads = atoi(optarg);
             break;
         case 'h':
             return 2;
@@ -854,8 +865,9 @@ int main(int argc, char **argv)
 {
     if (int r = parse_options(argc, argv))
     {
-        fprintf(stderr, "usage: %s [-c %d] [-b %d]  [-q %d] [-E %d] [-m CG+m.0] [-R chr1:1-100] [--no_header] [--no_phase] [--split_strand] -r ref.fasta -i input.cram\n\n"
+        fprintf(stderr, "usage: %s [-c %d] [-C %d]  [-b %d]  [-q %d] [-E %d] [-m CG+m.0] [-R chr1:1-100] [--no_header] [--no_phase] [--split_strand] -r ref.fasta -i input.cram\n\n"
                         " -c|--min_mod_prob Minimum probability of modification called modified (range 0-255)\n"
+                        " -C|--max_mod_prob Maximum probability of modification called unmodified (range 0-255)\n"
                         " -b|--min_baseq    Minimum base quality considered.\n"
                         " -q|--min_mapq     Minimum mapping quality considered.\n"
                         " -E|--exclude      Exclude all reads matching any of these SAM flags.\n"
@@ -867,9 +879,10 @@ int main(int argc, char **argv)
                         " --split_strand    Report modifications on either strand separately.\n"
                         " --no_header       Don't output header text.\n"
                         " --no_phase        Don't use HP and PS tags to separate phased reads.\n"
+                        " -@                Extra threads for reading input.\n"
                         " -h|--help         Print this help text.\n",
 
-                argv[0], min_mod_prob, min_baseq, min_mapq, exclude_filter);
+                argv[0], min_mod_prob, max_mod_prob, min_baseq, min_mapq, exclude_filter);
         // Don't fail if asked for help.
 
         exit(r == 2 ? 0 : 1);
@@ -878,7 +891,8 @@ int main(int argc, char **argv)
     // First argument: reference genome
     std::cerr << "reference_fasta_file:" << reference_fasta_file << std::endl;
     std::cerr << "input_bam_file:" << input_bam_file << std::endl;
-    std::cerr << "min_mod_prob:" << min_mod_prob << std::endl;
+    std::cerr << "min_mod_prob:" << min_mod_prob << " = " << (min_mod_prob + 0.5) / 256. << std::endl;
+    std::cerr << "max_mod_prob:" << max_mod_prob << " = " << (max_mod_prob + 0.5) / 256. << std::endl;
 
     for (std::vector<Modification>::iterator itr = modifications.begin(); itr != modifications.end(); itr++)
     {
@@ -894,6 +908,11 @@ int main(int argc, char **argv)
     }
 
     samFile *in = sam_open(input_bam_file, "r");
+    if (extra_hts_threads > 0)
+    {
+        hts_set_threads(in, extra_hts_threads);
+    }
+
     bam1_t *b = bam_init1();
     sam_hdr_t *h = sam_hdr_read(in);
 
