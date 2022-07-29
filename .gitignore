@@ -1,0 +1,14 @@
+threshold_tst/
+release/
+debug/
+orig.h
+sorted.h
+subset.cram
+subset.cram.crai
+koe.db
+Makefile.old
+nophase.out
+src/koe.cpp
+.png.tsv.signal.png
+a.out
+bam_to_mods
