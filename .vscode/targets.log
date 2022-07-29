@@ -6,7 +6,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Wed May  4 12:46:29 2022
+# Make data base, printed on Fri Jul 29 09:54:53 2022
 
 # Variables
 
@@ -28,8 +28,6 @@ STRINGS = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-strings
 GPROF = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gprof
 # environment
 VSCODE_AGENT_FOLDER = /home/kpalin/.vscode-server
-# environment
-VSCODE_LOG_NATIVE = false
 # environment
 OBJCOPY = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-objcopy
 # environment
@@ -53,7 +51,7 @@ NM = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-nm
 # environment
 VSCODE_NLS_CONFIG = {"locale":"en","availableLanguages":{}}
 # environment
-_ = /scratch/kpalin/.vscode-server/bin/dfd34e8260c270da74b5c2d86d61aee4b6d56977/node
+_ = /scratch/kpalin/.vscode-server/bin/3b889b090b5ad5793f524b5d1d39fda662b96a2a/node
 # makefile (from 'Makefile', line 5)
 CFLAGS = -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include -Wall
 # automatic
@@ -76,8 +74,6 @@ CXXFLAGS = -fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=h
 DBGCFLAGS = $(DEBUG_CXXFLAGS) -g -O0 -DDEBUG  -fno-tree-vectorize  -Wextra
 # environment
 ADDR2LINE = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-addr2line
-# environment
-VSCODE_VERBOSE_LOGGING = true
 # makefile (from 'Makefile', line 4)
 CC := /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-g++
 # environment
@@ -99,9 +95,9 @@ GSETTINGS_SCHEMA_DIR = /scratch/kpalin/miniconda3/share/glib-2.0/schemas
 # environment
 ELFEDIT = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-elfedit
 # environment
-SSH_CONNECTION = 128.214.8.3 40074 128.214.145.22 22
+SSH_CONNECTION = 128.214.8.3 50428 128.214.145.22 22
 # environment
-PATH = /scratch/kpalin/.vscode-server/bin/dfd34e8260c270da74b5c2d86d61aee4b6d56977/bin/remote-cli:/home/kpalin/.cargo/bin:/scratch/kpalin/miniconda3/bin:/scratch/kpalin/miniconda3/condabin:/home/kpalin/.aspera/connect/bin:/home/kpalin/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+PATH = /scratch/kpalin/.vscode-server/bin/3b889b090b5ad5793f524b5d1d39fda662b96a2a/bin/remote-cli:/home/kpalin/.cargo/bin:/scratch/kpalin/miniconda3/bin:/scratch/kpalin/miniconda3/condabin:/home/kpalin/.aspera/connect/bin:/home/kpalin/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
 # makefile (from 'Makefile', line 28)
 RELCFLAGS = $(CXXFLAGS) -O3 -DNDEBUG
 # environment
@@ -119,7 +115,7 @@ CONDA_PREFIX = /scratch/kpalin/miniconda3
 # environment
 AR = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-ar
 # environment
-VSCODE_LOG_STACK = false
+ELECTRON_RUN_AS_NODE = 1
 # environment
 LDFLAGS = -Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,-rpath,/scratch/kpalin/miniconda3/lib -Wl,-rpath-link,/scratch/kpalin/miniconda3/lib -L/scratch/kpalin/miniconda3/lib
 # default
@@ -129,7 +125,7 @@ CMAKE_PREFIX_PATH = /scratch/kpalin/miniconda3:/scratch/kpalin/miniconda3/x86_64
 # environment
 LS_COLORS = 
 # environment
-SSH_AUTH_SOCK = /run/user/1094701/vscode-ssh-auth-sock-256692371
+SSH_AUTH_SOCK = /run/user/1094701/vscode-ssh-auth-sock-353281330
 # environment
 SIZE = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-size
 # automatic
@@ -140,14 +136,12 @@ DISPLAY = localhost:11.0
 CONDA_EXE = /scratch/kpalin/miniconda3/bin/conda
 # environment
 HISTFILESIZE = 10000000
-# environment
-VSCODE_PIPE_LOGGING = true
 # makefile (from 'Makefile', line 18)
 DBGEXE = $(DBGDIR)/$(EXE)
 # environment
 PWD = /home/kpalin/software/bam_to_mods
 # environment
-VSCODE_IPC_HOOK_CLI = /run/user/1094701/vscode-ipc-132ddca5-e60f-4e4c-856c-4005d7cf316c.sock
+VSCODE_IPC_HOOK_CLI = /run/user/1094701/vscode-ipc-f38ec025-107c-42d0-9cfe-cc79a3516f41.sock
 # automatic
 *D = $(patsubst %/,%,$(dir $*))
 # environment
@@ -203,7 +197,7 @@ JAVA_HOME = /scratch/kpalin/miniconda3
 # environment
 OMP_NUM_THREADS = 4
 # environment
-XDG_SESSION_ID = 7
+XDG_SESSION_ID = 441
 # environment
 USER = kpalin
 # makefile
@@ -231,7 +225,7 @@ MAKEFLAGS = pqrR
 # environment
 MFLAGS = -pqrR
 # environment
-SSH_CLIENT = 128.214.8.3 40074 22
+SSH_CLIENT = 128.214.8.3 50428 22
 # environment
 LOCATE_PATH = /mnt/cg1/mlocate.cg.db:/mnt/cg10/mlocate.cg.db:/mnt/cg38/mlocate.cg38.db:/mnt/cgnano/mlocate.cgnano.db:/mnt/cg1/mlocate.gsb-fileserv-aaltonen.db
 # environment
@@ -241,13 +235,15 @@ MAIL = /var/mail/kpalin
 # environment
 OBJDUMP = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-objdump
 # environment
-BROWSER = /scratch/kpalin/.vscode-server/bin/dfd34e8260c270da74b5c2d86d61aee4b6d56977/bin/helpers/browser.sh
+BROWSER = /scratch/kpalin/.vscode-server/bin/3b889b090b5ad5793f524b5d1d39fda662b96a2a/bin/helpers/browser.sh
 # environment
 GSETTINGS_SCHEMA_DIR_CONDA_BACKUP = 
 # environment
 S_COLORS = auto
 # environment
 STRIP = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-strip
+# environment
+VSCODE_HANDLES_SIGPIPE = true
 # default
 MAKEFILES := 
 # environment
@@ -280,6 +276,7 @@ _CE_M =
 DEBUG_CFLAGS = -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include
 # environment
 host_alias = x86_64-conda-linux-gnu
+ 
 # default
 .INCLUDE_DIRS = /usr/include /usr/local/include /usr/include
 # default
@@ -288,13 +285,10 @@ host_alias = x86_64-conda-linux-gnu
 MAKE_HOST := x86_64-pc-linux-gnu
 # environment
 CC_FOR_BUILD = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-cc
- 
 # environment
 GCC_RANLIB = /scratch/kpalin/miniconda3/bin/x86_64-conda-linux-gnu-gcc-ranlib
 # environment
 LANG = C
-# environment
-VSCODE_EXTHOST_WILL_SEND_SOCKET = true
 # environment
 DEBUG_CXXFLAGS = -fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /scratch/kpalin/miniconda3/include
 # makefile (from 'Makefile', line 17)
@@ -304,7 +298,7 @@ _CE_CONDA =
 # environment
 HOST = x86_64-conda-linux-gnu
 # variable set hash-table stats:
-# Load=146/1024=14%, Rehash=0, Collisions=25/203=12%
+# Load=143/1024=14%, Rehash=0, Collisions=25/200=12%
 
 # Pattern-specific Variable Values
 
@@ -312,10 +306,10 @@ HOST = x86_64-conda-linux-gnu
 
 # Directories
 
-# . (device 52, inode -9178197162812555364): 24 files, no impossibilities.
-# src (device 52, inode -9178197167100653794): No files, no impossibilities so far.
+# . (device 53, inode -9178197162812555364): 25 files, no impossibilities.
+# src (device 53, inode -9178197167100653794): No files, no impossibilities so far.
 
-# 24 files, no impossibilities in 2 directories.
+# 25 files, no impossibilities in 2 directories.
 
 # Implicit Rules
 
@@ -331,7 +325,7 @@ release/%.o: src/%.cpp
 
 # Files
 
-all: prep release
+all: prep release debug
 #  Phony target (prerequisite of .PHONY).
 #  Command line target.
 #  Implicit rule search has not been done.
@@ -395,7 +389,7 @@ remake: clean all
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-05-04 12:45:38.207256
+#  Last modified 2022-05-12 13:52:15.50241
 #  File has been updated.
 #  Successfully updated.
 
@@ -446,19 +440,19 @@ release/bam_to_mods: release/bam_mods_to_text.o
 	$(CXX) $(LIBS) $(LDFLAGS)  -o $(RELEXE) $^
 
 # files hash-table stats:
-# Load=14/1024=1%, Rehash=0, Collisions=0/47=0%
+# Load=14/1024=1%, Rehash=0, Collisions=0/48=0%
 # VPATH Search Paths
 
 # No 'vpath' search paths.
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 40 / storage = 429 B / avg = 10 B
-# current buf: size = 8162 B / used = 429 B / count = 40 / avg = 10 B
+# strcache buffers: 1 (0) / strings = 41 / storage = 448 B / avg = 10 B
+# current buf: size = 8162 B / used = 448 B / count = 41 / avg = 10 B
 
-# strcache performance: lookups = 71 / hit rate = 43%
+# strcache performance: lookups = 73 / hit rate = 43%
 # hash-table stats:
-# Load=40/8192=0%, Rehash=0, Collisions=1/71=1%
-# Finished Make data base on Wed May  4 12:46:30 2022
+# Load=41/8192=1%, Rehash=0, Collisions=1/73=1%
+# Finished Make data base on Fri Jul 29 09:54:53 2022
 
  

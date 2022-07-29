@@ -908,6 +908,13 @@ int main(int argc, char **argv)
     }
 
     samFile *in = sam_open(input_bam_file, "r");
+    if (!in)
+    {
+        fprintf(stderr, "Can't open input bam file '%s'.", input_bam_file);
+
+        exit(1);
+    }
+
     if (extra_hts_threads > 0)
     {
         hts_set_threads(in, extra_hts_threads);
@@ -950,6 +957,8 @@ int main(int argc, char **argv)
     bam_plp_t iter = bam_plp_init(readaln, &dat);
     bam_plp_constructor(iter, pileup_cd_create);
     bam_plp_destructor(iter, pileup_cd_destroy);
+
+    int motif_sites_covered = 0;
 
     while ((p = bam_plp_auto(iter, &tid, &pos, &n)) != 0)
     {
@@ -1004,6 +1013,7 @@ int main(int argc, char **argv)
                 if (!plp_procced)
                 {
                     process_mod_pileup0(h, p, tid, pos, n, ref_seq[pos]);
+                    motif_sites_covered++;
                     plp_procced = true;
                 }
             }
@@ -1079,5 +1089,7 @@ int main(int argc, char **argv)
     bam_destroy1(b);
     sam_hdr_destroy(h);
     free(ref_fai);
-    return 0;
+    std::cerr << "Covered " << motif_sites_covered << " sites." << std::endl;
+    // Fail if no motifs covered.
+    return (motif_sites_covered > 0 ? 0 : 1);
 }

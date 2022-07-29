@@ -30,7 +30,7 @@ RELCFLAGS = $(CXXFLAGS) -O3 -DNDEBUG
 .PHONY: all clean debug prep release remake
 
 # Default build
-all: prep release
+all: prep release debug
 
 #
 # Debug rules

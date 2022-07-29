@@ -12,11 +12,11 @@
             "program": "${workspaceFolder}/bam_to_mods",
             "args": [
                 "-R",
-                "chr9:170000-180000",
+                "chr2:170000-180000",
                 "-r",
                 "/mnt/cg8/reference-genomes/GRCh38_no_alt/GRCh38_no_alt.fasta",
                 "-i",
-                "/mnt/cgnano/projects/promethion/kpalin/dev/Fam_c461_1_19_0711NK_meg/phase/longshot.Fam_c461_1_19_0711NK_meg.phased.cram"
+                "/mnt/cgnano/projects/promethion/kpalin/dev/Yin_RPE_DP53_GRCh38_PAE13499/phase/longshot.Yin_RPE_DP53_GRCh38_PAE13499.raw.phased.cram"
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

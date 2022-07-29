@@ -88,8 +88,12 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     ret = main()
-    r = pd.Series(r["chr1", ("C", 0, "m")]).reset_index()
+    r = pd.Series(ret["chr1", ("C", 0, "m")]).reset_index()
     r.columns = ["Pos", "Score", "Count"]
+    r1 = pd.Series(ret["chr1", ("C", 1, "m")]).reset_index()
+    r1.columns = ["Pos", "Score", "Count"]
+    r1["posC"] = r1.Pos - 1
+    r = r.loc[r.Pos.isin(r1.posC)]
     D = (
         r.query("Count>2")
         .Score.value_counts()
