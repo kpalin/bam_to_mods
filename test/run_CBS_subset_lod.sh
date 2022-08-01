@@ -20,10 +20,11 @@ trap _cleanup EXIT
 
 MIN_C=125
 MAX_C=0
+MIN_BQ=7
 
 usage() {
     echo -e "usage:
-$0 [-c $MIN_C] [-C $MAX_C] [-l LOD] 
+$0 [-c $MIN_C] [-C $MAX_C] [-b ${MIN_BQ} ] [-l LOD] 
 
 -o OUTFILE
 -h          Show this message and exit." >&2
@@ -31,7 +32,7 @@ $0 [-c $MIN_C] [-C $MAX_C] [-l LOD]
 
 }
 
-while getopts "l:c:C:h" flag; do
+while getopts "l:c:C:b:h" flag; do
     case "$flag" in
     l)
         LOD="$OPTARG"
@@ -46,6 +47,9 @@ while getopts "l:c:C:h" flag; do
     C)
         MAX_C="$OPTARG"
         ;;
+    b)
+        MIN_BQ="$OPTARG"
+        ;;
     h | *)
         usage
         ;;
@@ -54,10 +58,10 @@ done
 shift $((OPTIND - 1))
 OPTIND=1
 
-LIKE_LIM="c${MIN_C}_C${MAX_C}"
+LIKE_LIM="c${MIN_C}_C${MAX_C}_b${MIN_BQ}"
 echo "$LIKE_LIM"
 
-/usr/bin/time -v ./release/bam_to_mods --no_phase -C $MAX_C -c $MIN_C \
+/usr/bin/time -v ./release/bam_to_mods --no_phase -C $MAX_C -c $MIN_C -b ${MIN_BQ} \
     -r /mnt/cg8/reference-genomes/GRCh38_no_alt/GRCh38_no_alt.fasta \
     --mod CG+m.0 -@ 5 \
     -i subset.cram | bgzip >"threshold_tst/subset_tsv/subset.mC.${LIKE_LIM}.tsv.gz"

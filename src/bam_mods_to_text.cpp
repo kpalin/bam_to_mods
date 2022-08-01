@@ -108,6 +108,17 @@ int pileup_cd_destroy(void *data, const bam1_t *b, bam_pileup_cd *cd)
     return 0;
 }
 
+// Convert phred scaled base quality to a weight score.
+double base_qual_to_weight(int base_qual)
+{
+    // if (base_qual > 50)
+    // {
+    //     std::cerr << "Suspicous base quality: " << base_qual << '\n';
+    // }
+    base_qual = base_qual;
+    return 1. - pow(10., -base_qual / 10.);
+}
+
 #include <regex>
 
 const char complement(char const n)
@@ -250,6 +261,8 @@ public:
     std::map<int, int> modified_count;
     std::map<int, int> canonical_count;
     std::map<int, double> modified_expected;
+    std::map<int, double> canonical_weight;
+    std::map<int, double> modified_weight;
     _mod_count_t()
     {
         other_count = 0;
@@ -258,6 +271,9 @@ public:
         {
             modified_count[cmod->mod_code] = 0;
             canonical_count[cmod->mod_code] = 0;
+
+            modified_weight[cmod->mod_code] = 0;
+            canonical_weight[cmod->mod_code] = 0;
 
             modified_expected[cmod->mod_code] = 0.;
         }
@@ -278,6 +294,8 @@ public:
             r.modified_expected[cmod->mod_code] = this->modified_expected.at(cmod->mod_code) + c.modified_expected.at(cmod->mod_code);
             r.canonical_count[cmod->mod_code] = this->canonical_count.at(cmod->mod_code) + c.canonical_count.at(cmod->mod_code);
 
+            r.modified_weight[cmod->mod_code] = this->modified_weight.at(cmod->mod_code) + c.modified_weight.at(cmod->mod_code);
+            r.canonical_weight[cmod->mod_code] = this->canonical_weight.at(cmod->mod_code) + c.canonical_weight.at(cmod->mod_code);
             // std::cerr << this->modified_count.at(cmod->mod_code) << '+' << c.modified_count.at(cmod->mod_code) << '=' << r.modified_count[cmod->mod_code] << '@' << cmod->mod_code << '\n';
         }
         return r;
@@ -289,26 +307,33 @@ public:
         this->total_count = c.total_count;
         this->modified_count = c.modified_count;
         this->modified_expected = c.modified_expected;
+        this->modified_weight = c.modified_weight;
+        this->canonical_weight = c.canonical_weight;
     }
-    void add_canonical(int mod_id, int mod_is_rev = 0)
+
+    void add_canonical(int mod_id, int mod_is_rev = 0, int base_qual = 60)
     {
         canonical_count[mod_id]++;
+        canonical_weight[mod_id] += base_qual_to_weight(base_qual);
     }
     void add_match() { total_count++; }
-    void add_modified(int mod_id, int mod_is_rev = 0)
+    void add_modified(int mod_id, int mod_is_rev = 0, int base_qual = 60)
     {
-
+        assert(mod_is_rev == 0 || mod_is_rev == 1);
         modified_count[mod_id]++;
         modified_expected[mod_id] += 1.;
+        modified_weight[mod_id] += base_qual_to_weight(base_qual);
     }
-    /* Add expectation and count modification for give mod.
+    /* Add expectation, weight and count modification for give mod. If is_modified is false, the
+modification is ambiguous and is not counted either (but still counts for expectation.)
      */
-    void add_observed(int mod_id, int mod_is_rev, double mod_expectation, bool is_modified)
+    void add_observed(int mod_id, int mod_is_rev, double mod_expectation, bool is_modified, int base_qual)
     {
 
         if (is_modified)
         {
             modified_count[mod_id]++;
+            modified_weight[mod_id] += base_qual_to_weight(base_qual);
         }
         modified_expected[mod_id] += mod_expectation;
     }
@@ -388,10 +413,10 @@ private:
 public:
     ModCounter(/* args */);
     ~ModCounter();
-    void add_canonical(int pos, int read_is_rev, int ps = -1, int hp = -1, int mod_id = 0, int mod_is_rev = 0);
+    void add_canonical(int pos, int read_is_rev, int ps = -1, int hp = -1, int mod_id = 0, int mod_is_rev = 0, int base_qual = 60);
     void add_canonical_except(int pos, int read_is_rev,
-                              int ps, int hp, std::set<std::pair<int, int>> mods_id_rev);
-    void add_modified(int pos, int read_is_rev, int ps, int hp, int mod_id, int const mod_is_rev = 0, double mod_expect = 1., bool is_modified = true);
+                              int ps, int hp, std::set<std::pair<int, int>> mods_id_rev, int base_qual = 60);
+    void add_modified(int pos, int read_is_rev, int ps, int hp, int mod_id, int const mod_is_rev = 0, double mod_expect = 1., bool is_modified = true, int base_qual = 60);
 
     void add_other(int pos, int read_is_rev, int ps = -1, int hp = -1);
     void add_match(int pos, int read_is_rev, int ps = -1, int hp = -1)
@@ -486,7 +511,7 @@ void ModCounter::erase_upto(int upto)
     }
 }
 
-std::string mod_count_to_str(int mod_code, int mod_count, int called_sites)
+std::string mod_count_to_str(int mod_code, int mod_count, double called_weight, double mod_weight)
 {
     std::stringstream ss;
     if (mod_code <= 0)
@@ -498,7 +523,7 @@ std::string mod_count_to_str(int mod_code, int mod_count, int called_sites)
         ss << (char)mod_code;
     }
     ss << '\t' << mod_count;
-    double mod_freq = (double)mod_count / (double)called_sites;
+    double mod_freq = (double)mod_weight / (double)called_weight;
     ss << '\t' << mod_freq << '\n';
     return ss.str();
 }
@@ -544,6 +569,10 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos, Modifi
     for (std::map<std::pair<int, int>, _mod_count_t>::iterator cnts_it = cnts.begin(); cnts_it != cnts.end(); cnts_it++)
     {
         const int called_sites = cnts_it->second.canonical_count.at(cmod.mod_code) + cnts_it->second.modified_count.at(cmod.mod_code);
+
+        const double modified_weight = cnts_it->second.modified_weight.at(cmod.mod_code);
+        const double canonical_weight = cnts_it->second.canonical_weight.at(cmod.mod_code);
+        const double called_weight = modified_weight + canonical_weight;
         assert(called_sites <= cnts_it->second.total_count);
         out_stream << ss.str();
         if (cnts_it->first.first >= 0)
@@ -557,14 +586,14 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos, Modifi
 
         out_stream << called_sites << '\t' << cnts_it->second.total_count - called_sites << '\t' << cnts_it->second.other_count << '\t';
 
-        out_stream << mod_count_to_str(cmod.mod_code, cnts_it->second.modified_count[cmod.mod_code], called_sites);
+        out_stream << mod_count_to_str(cmod.mod_code, cnts_it->second.modified_count[cmod.mod_code], called_weight, modified_weight);
     }
 
     return out_stream.str();
 }
 /* Add count of canonical base for all modifications or single one */
 void ModCounter::add_canonical(int pos, int read_is_rev,
-                               int ps, int hp, int mod_id, int mod_is_rev)
+                               int ps, int hp, int mod_id, int mod_is_rev, int base_qual)
 {
     mod_key k(pos, read_is_rev, ps, hp);
     auto &mod_cnts = mod_count_store[k];
@@ -574,18 +603,18 @@ void ModCounter::add_canonical(int pos, int read_is_rev,
         for (std::map<int, int>::iterator it = mod_cnts.canonical_count.begin();
              it != mod_cnts.canonical_count.end(); it++)
         {
-            mod_cnts.add_canonical(it->first);
+            mod_cnts.add_canonical(it->first, mod_is_rev, base_qual);
         }
     }
     else
     {
-        mod_cnts.add_canonical(mod_id, mod_is_rev);
+        mod_cnts.add_canonical(mod_id, mod_is_rev, base_qual);
     }
 }
 
 /* Add count of canonical bases EXCEPT the listed */
 void ModCounter::add_canonical_except(int pos, int read_is_rev,
-                                      int ps, int hp, std::set<std::pair<int, int>> mods_id_rev)
+                                      int ps, int hp, std::set<std::pair<int, int>> mods_id_rev, int base_qual)
 {
     mod_key k(pos, read_is_rev, ps, hp);
     auto &mod_cnts = mod_count_store[k];
@@ -595,7 +624,7 @@ void ModCounter::add_canonical_except(int pos, int read_is_rev,
     {
         if (mods_id_rev.count(std::make_pair(it->first, 0)) == 0)
         {
-            mod_cnts.add_canonical(it->first);
+            mod_cnts.add_canonical(it->first, 0, base_qual);
         }
     }
 }
@@ -605,12 +634,12 @@ void ModCounter::add_other(int pos, int read_is_rev, int ps, int hp)
     mod_key k(pos, read_is_rev, ps, hp);
     mod_count_store[k].add_other();
 }
-
-void ModCounter::add_modified(int pos, int read_is_rev, int ps, int hp, int mod_id, int const mod_is_rev, double mod_expect, bool is_modified)
+// Add count for (possibly) modified base. The base is modified if is_modified is true. If is_modified is false, the modification status is considred ambiguous and is ignored for downstream calculations.
+void ModCounter::add_modified(int pos, int read_is_rev, int ps, int hp, int mod_id, int const mod_is_rev, double mod_expect, bool is_modified, int base_qual)
 {
     // assert(mod_is_rev == 0);
     mod_key k(pos, read_is_rev, ps, hp);
-    mod_count_store[k].add_observed(mod_id, mod_is_rev, mod_expect, is_modified);
+    mod_count_store[k].add_observed(mod_id, mod_is_rev, mod_expect, is_modified, base_qual);
 }
 
 // Report a line of pileup, including base modifications inline with
@@ -666,22 +695,23 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p,
                 {
                     found_mods.insert(std::make_pair(mod[j].modified_base, mod[j].strand));
                     if (mod[j].qual <= max_mod_prob)
-                    {
-                        mod_counter.add_canonical(pos, read_is_rev, ps, hp, mod[j].modified_base, mod[j].strand);
+                    { // Modification probability less than threshold, hence this is a canonical base
+                        mod_counter.add_canonical(pos, read_is_rev, ps, hp, mod[j].modified_base, mod[j].strand, base_qual);
                     }
                     else
-                    {
+                    { // (if the modification probability is greater than threshold), this is a modified base
                         bool is_modified = (mod[j].qual >= min_mod_prob);
                         double modified_expected = mod[j].qual / 255.;
                         mod_counter.add_modified(pos, read_is_rev, ps, hp, mod[j].modified_base, mod[j].strand,
-                                                 modified_expected, is_modified);
+                                                 modified_expected, is_modified, base_qual);
                     }
                 }
-                mod_counter.add_canonical_except(pos, read_is_rev, ps, hp, found_mods);
+                // This is canonical base for modifications we didn't observe.
+                mod_counter.add_canonical_except(pos, read_is_rev, ps, hp, found_mods, base_qual);
             }
             else
             { // There is no modifications called at this locus
-                mod_counter.add_canonical(pos, read_is_rev, ps, hp);
+                mod_counter.add_canonical(pos, read_is_rev, ps, hp, 0, 0, base_qual);
             }
         }
     }
@@ -692,6 +722,10 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id, _mod_c
     // std::cout << mod_id << 'x' << cnts << '\n';
 
     const int called_sites = cnts.canonical_count.at(out_mod_code) + cnts.modified_count.at(out_mod_code);
+
+    const double modified_weight = cnts.modified_weight.at(out_mod_code);
+    const double canonical_weight = cnts.canonical_weight.at(out_mod_code);
+    const double called_weight = modified_weight + canonical_weight;
     assert(called_sites <= cnts.total_count);
     std::stringstream ss;
     if (header_flag)
@@ -728,14 +762,14 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id, _mod_c
         {
             out_stream << ss.str();
 
-            out_stream << mod_count_to_str(it->first, it->second, called_sites) << '\n';
+            out_stream << mod_count_to_str(it->first, it->second, called_weight, modified_weight) << '\n';
         }
     }
     else
     {
         out_stream << ss.str();
 
-        out_stream << mod_count_to_str(out_mod_code, cnts.modified_count[out_mod_code], called_sites);
+        out_stream << mod_count_to_str(out_mod_code, cnts.modified_count[out_mod_code], called_weight, modified_weight);
     }
 
     return out_stream;
