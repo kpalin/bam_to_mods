@@ -267,6 +267,21 @@ public:
     {
         return (this->canonical_count == Ref.canonical_count) && this->other_count == Ref.other_count && this->modified_count == Ref.modified_count;
     }
+    _mod_count_t &operator+=(_mod_count_t &c)
+    {
+
+        this->other_count += c.other_count;
+        this->total_count += c.total_count;
+        for (std::vector<Modification>::iterator cmod = modifications.begin(); cmod != modifications.end(); cmod++)
+        {
+            this->modified_count[cmod->mod_code] += c.modified_count.at(cmod->mod_code);
+            this->modified_expected[cmod->mod_code] += c.modified_expected.at(cmod->mod_code);
+            this->canonical_count[cmod->mod_code] += c.canonical_count.at(cmod->mod_code);
+
+            // std::cerr << this->modified_count.at(cmod->mod_code) << '+' << c.modified_count.at(cmod->mod_code) << '=' << this->modified_count[cmod->mod_code] << '@' << cmod->mod_code << '\n';
+        }
+        return *this;
+    }
     _mod_count_t operator+(_mod_count_t &c)
     {
         _mod_count_t r;
@@ -497,6 +512,7 @@ std::string mod_count_to_str(int mod_code, int mod_count, int called_sites)
 std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos, Modification &cmod)
 {
     std::stringstream ss, out_stream;
+    _mod_count_t mod_counts_total;
 
     if (header_flag)
     {
@@ -534,6 +550,7 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos, Modifi
         }
     }
 
+    // Print phase set and haplotype totals:
     for (std::map<std::pair<int, int>, _mod_count_t>::iterator cnts_it = cnts.begin(); cnts_it != cnts.end(); cnts_it++)
     {
         const int phase_set = cnts_it->first.second;
@@ -556,7 +573,15 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos, Modifi
         out_stream << called_sites << '\t' << mod_counts_here.total_count - called_sites << '\t' << mod_counts_here.other_count << '\t';
 
         out_stream << mod_count_to_str(cmod.mod_code, mod_counts_here.modified_count[cmod.mod_code], called_sites);
+
+        mod_counts_total += mod_counts_here;
     }
+    // Print the locus total:
+    const int called_sites = mod_counts_total.canonical_count.at(cmod.mod_code) + mod_counts_total.modified_count.at(cmod.mod_code);
+    assert(called_sites <= mod_counts_total.total_count);
+
+    out_stream << ss.str() << "*\t*\t" << called_sites << '\t' << mod_counts_total.total_count - called_sites << '\t' << mod_counts_total.other_count << '\t';
+    out_stream << mod_count_to_str(cmod.mod_code, mod_counts_total.modified_count[cmod.mod_code], called_sites);
 
     return out_stream.str();
 }
