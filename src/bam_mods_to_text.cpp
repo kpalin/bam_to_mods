@@ -767,6 +767,9 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id, _mod_c
 static char *reference_fasta_file = NULL;
 static char *input_bam_file = NULL;
 static char *target_region = NULL;
+#define PARSE_UNKNOWN 1
+#define PARSE_HELP 2
+#define PARSE_VERSION 3
 
 int parse_options(int argc, char **argv)
 {
@@ -863,13 +866,13 @@ int parse_options(int argc, char **argv)
             extra_hts_threads = atoi(optarg);
             break;
         case 'h':
-            return 2;
+            return PARSE_HELP;
         case 'V':
             fprintf(stderr, "Version %d.%d.%d\n", btm_version.major, btm_version.minor, btm_version.patch);
-            abort();
+            return PARSE_VERSION;
         case '?':
             /* getopt_long already printed an error message. */
-            return 1;
+            return PARSE_UNKNOWN;
             break;
 
         default:
@@ -894,30 +897,35 @@ int main(int argc, char **argv)
 {
     if (int r = parse_options(argc, argv))
     {
-        fprintf(stderr, "usage: %s [-c %d] [-C %d]  [-b %d]  [-q %d] [-E %d] [-m CG+m.0] [-R chr1:1-100] [--no_header] [--no_phase] [--split_strand] -r ref.fasta -i input.cram\n\n"
-                        " -c|--min_mod_prob Minimum probability of modification called modified (range 0-255)\n"
-                        " -C|--max_mod_prob Maximum probability of modification called unmodified (range 0-255)\n"
-                        " -b|--min_baseq    Minimum base quality considered.\n"
-                        " -q|--min_mapq     Minimum mapping quality considered.\n"
-                        " -E|--exclude      Exclude all reads matching any of these SAM flags.\n"
-                        " -R|--region       Genomic region to consider.\n"
-                        " -r|--reference_fasta   FAI indexed fasta file of the reference genome.\n"
-                        " -i|--input        Input SAM/BAM/CRAM file. Indexed if used with -R.\n"
-                        " -m|--mod          DNA modification to consider. Format: 'CG+m.0' for methylation 'm' of C:s on position '0' \n"
-                        "                   of context 'CG' in forward strand. Can be given multiple times. If none given, 'CG+m.0' is used.\n"
-                        " --split_strand    Report modifications on either strand separately.\n"
-                        " --no_header       Don't output header text.\n"
-                        " --no_phase        Don't use HP and PS tags to separate phased reads.\n"
-                        " -@                Extra threads for reading input.\n"
-                        " -h|--help         Print this help text.\n\n"
-                        "Version %d.%d.%d\n"
-                        "Using htslib version %s.\n",
-                argv[0],
-                min_mod_prob, max_mod_prob, min_baseq, min_mapq, exclude_filter, btm_version.major, btm_version.minor, btm_version.patch,
-                hts_version());
+        if (r == PARSE_HELP)
+        {
+
+            fprintf(stderr, "usage: %s [-c %d] [-C %d]  [-b %d]  [-q %d] [-E %d] [-m CG+m.0] [-R chr1:1-100] [--no_header] [--no_phase] [--split_strand] -r ref.fasta -i input.cram\n\n"
+                            " -c|--min_mod_prob Minimum probability of modification called modified (range 0-255)\n"
+                            " -C|--max_mod_prob Maximum probability of modification called unmodified (range 0-255)\n"
+                            " -b|--min_baseq    Minimum base quality considered.\n"
+                            " -q|--min_mapq     Minimum mapping quality considered.\n"
+                            " -E|--exclude      Exclude all reads matching any of these SAM flags.\n"
+                            " -R|--region       Genomic region to consider.\n"
+                            " -r|--reference_fasta   FAI indexed fasta file of the reference genome.\n"
+                            " -i|--input        Input SAM/BAM/CRAM file. Indexed if used with -R.\n"
+                            " -m|--mod          DNA modification to consider. Format: 'CG+m.0' for methylation 'm' of C:s on position '0' \n"
+                            "                   of context 'CG' in forward strand. Can be given multiple times. If none given, 'CG+m.0' is used.\n"
+                            " --split_strand    Report modifications on either strand separately.\n"
+                            " --no_header       Don't output header text.\n"
+                            " --no_phase        Don't use HP and PS tags to separate phased reads.\n"
+                            " -@                Extra threads for reading input.\n"
+                            " -h|--help         Print this help text.\n\n"
+                            "Version %d.%d.%d\n"
+                            "Using htslib version %s.\n",
+                    argv[0],
+                    min_mod_prob, max_mod_prob, min_baseq, min_mapq, exclude_filter, btm_version.major, btm_version.minor, btm_version.patch,
+                    hts_version());
+        }
+
         // Don't fail if asked for help.
 
-        exit(r == 2 ? 0 : 1);
+        exit((r == PARSE_HELP || r == PARSE_VERSION) ? 0 : 1);
     }
 
     if (strcmp(hts_version(), "1.16") < 0)
@@ -1073,6 +1081,7 @@ int main(int argc, char **argv)
                     }
                 }
             }
+
             else
             {
                 // Gone past the 'latter' of the modified sites of the motif.
