@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../ONT_hg_pipe"
 		}
 	],
 	"settings": {

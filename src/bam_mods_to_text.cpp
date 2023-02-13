@@ -18,7 +18,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
-//#include <config.h>
+// #include <config.h>
 
 #include <stdio.h>
 #include <ctype.h>
@@ -41,6 +41,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <algorithm>
 #include <vector>
 #include <set>
+#include "version.h"
 
 static int header_flag = 1;
 static int split_strand_flag = 0;
@@ -51,7 +52,7 @@ static int max_mod_prob = 46;  // < 18.2%
 static int min_mapq = 20;
 static int min_baseq = 7;
 static int extra_hts_threads = 2;
-static int exclude_filter = (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP);
+static int exclude_filter = (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP | BAM_FSUPPLEMENTARY);
 // samtools view -F 1796 -u /mnt/cgnano/projects/promethion/kpalin/dev/Fam_c461_1_19_0711NK_meg/phase/longshot.Fam_c461_1_19_0711NK_meg.phased.cram chr9:170012-170012  |samtools mpileup -Q 7 -q 20 --output-extra PS - |grep  170012
 typedef struct
 {
@@ -282,14 +283,14 @@ public:
         }
         return r;
     }
-    _mod_count_t(const _mod_count_t &c)
-    {
-        this->canonical_count = c.canonical_count;
-        this->other_count = c.other_count;
-        this->total_count = c.total_count;
-        this->modified_count = c.modified_count;
-        this->modified_expected = c.modified_expected;
-    }
+    // _mod_count_t(const _mod_count_t &c)
+    // {
+    //     this->canonical_count = c.canonical_count;
+    //     this->other_count = c.other_count;
+    //     this->total_count = c.total_count;
+    //     this->modified_count = c.modified_count;
+    //     this->modified_expected = c.modified_expected;
+    // }
     void add_canonical(int mod_id, int mod_is_rev = 0)
     {
         canonical_count[mod_id]++;
@@ -472,16 +473,6 @@ void ModCounter::erase_upto(int upto)
 
         std::map<mod_key, _mod_count_t>::iterator upto_it = this->mod_count_store.lower_bound(upto + 1);
 
-        // std::cerr << *this << "\nErasing up to ";
-        // if (upto_it == this->mod_count_store.end())
-        // {
-        //     std::cerr << "end" << '\n';
-        // }
-        // else
-        // {
-        //     std::cerr << upto << " : " << upto_it->first << " : " << upto_it->second << '\n';
-        // }
-
         this->mod_count_store.erase(this->begin(), upto_it);
     }
 }
@@ -517,6 +508,8 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos, Modifi
 
     int fwd_pos = pos - cmod.fwd_context.length() + cmod.fwd_ctx_pos + 1;
     int rev_pos = pos - cmod.fwd_context.length() + cmod.rev_ctx_pos + 1;
+
+    // pair<phase_set,haplotype> -> _mod_count_t
     std::map<std::pair<int, int>, _mod_count_t> cnts;
     // std::cerr << "pos : " << pos << " +" << fwd_pos << " -" << rev_pos << '\n';
     for (std::map<mod_key, _mod_count_t>::iterator it = this->from(fwd_pos, 0); it != this->to(fwd_pos); it++)
@@ -543,21 +536,26 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos, Modifi
 
     for (std::map<std::pair<int, int>, _mod_count_t>::iterator cnts_it = cnts.begin(); cnts_it != cnts.end(); cnts_it++)
     {
-        const int called_sites = cnts_it->second.canonical_count.at(cmod.mod_code) + cnts_it->second.modified_count.at(cmod.mod_code);
-        assert(called_sites <= cnts_it->second.total_count);
+        const int phase_set = cnts_it->first.second;
+        const int haplotype = cnts_it->first.first;
+
+        _mod_count_t &mod_counts_here = cnts_it->second;
+
+        const int called_sites = mod_counts_here.canonical_count.at(cmod.mod_code) + mod_counts_here.modified_count.at(cmod.mod_code);
+        assert(called_sites <= mod_counts_here.total_count);
         out_stream << ss.str();
-        if (cnts_it->first.first >= 0)
+        if (haplotype >= 0)
         {
-            out_stream << cnts_it->first.second << '\t' << cnts_it->first.first << '\t';
+            out_stream << phase_set << '\t' << haplotype << '\t';
         }
         else
         {
             out_stream << "N\t-1\t";
         }
 
-        out_stream << called_sites << '\t' << cnts_it->second.total_count - called_sites << '\t' << cnts_it->second.other_count << '\t';
+        out_stream << called_sites << '\t' << mod_counts_here.total_count - called_sites << '\t' << mod_counts_here.other_count << '\t';
 
-        out_stream << mod_count_to_str(cmod.mod_code, cnts_it->second.modified_count[cmod.mod_code], called_sites);
+        out_stream << mod_count_to_str(cmod.mod_code, mod_counts_here.modified_count[cmod.mod_code], called_sites);
     }
 
     return out_stream.str();
@@ -765,6 +763,7 @@ int parse_options(int argc, char **argv)
             {"exclude", required_argument, 0, 'E'},
             {"mod", required_argument, 0, 'm'},
             {"region", required_argument, 0, 'R'},
+            {"version", no_argument, 0, 'V'},
             {"help", no_argument, 0, 'h'},
             {0, 0, 0, 0}};
     while (1)
@@ -773,7 +772,7 @@ int parse_options(int argc, char **argv)
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long(argc, argv, "r:i:c:C:b:m:q:E:R:@:h",
+        c = getopt_long(argc, argv, "r:i:c:C:b:m:q:E:R:@:hV",
                         long_options, &option_index);
         // std::cerr << "getopt_long ret: " << c << '\n';
         /* Detect the end of the options. */
@@ -840,6 +839,9 @@ int parse_options(int argc, char **argv)
             break;
         case 'h':
             return 2;
+        case 'V':
+            fprintf(stderr, "Version %d.%d.%d\n", btm_version.major, btm_version.minor, btm_version.patch);
+            abort();
         case '?':
             /* getopt_long already printed an error message. */
             return 1;
@@ -860,7 +862,9 @@ int parse_options(int argc, char **argv)
     }
     return 0;
 }
-
+#if HTS_VERSION < 101600
+#error "Requires HTSLIB version at least 1.16. "
+#endif
 int main(int argc, char **argv)
 {
     if (int r = parse_options(argc, argv))
@@ -880,12 +884,21 @@ int main(int argc, char **argv)
                         " --no_header       Don't output header text.\n"
                         " --no_phase        Don't use HP and PS tags to separate phased reads.\n"
                         " -@                Extra threads for reading input.\n"
-                        " -h|--help         Print this help text.\n",
-
-                argv[0], min_mod_prob, max_mod_prob, min_baseq, min_mapq, exclude_filter);
+                        " -h|--help         Print this help text.\n\n"
+                        "Version %d.%d.%d\n"
+                        "Using htslib version %s.\n",
+                argv[0],
+                min_mod_prob, max_mod_prob, min_baseq, min_mapq, exclude_filter, btm_version.major, btm_version.minor, btm_version.patch,
+                hts_version());
         // Don't fail if asked for help.
 
         exit(r == 2 ? 0 : 1);
+    }
+
+    if (strcmp(hts_version(), "1.16") < 0)
+    {
+        fprintf(stderr, "Need htslib version at least 1.16. Compiled with %d. Currently having %s.\n", HTS_VERSION, hts_version());
+        exit(2);
     }
 
     // First argument: reference genome
@@ -963,6 +976,8 @@ int main(int argc, char **argv)
     while ((p = bam_plp_auto(iter, &tid, &pos, &n)) != 0)
     {
         bool plp_procced = false;
+
+        // Out of region
         if (pos < begin)
         {
             continue;
@@ -971,6 +986,8 @@ int main(int argc, char **argv)
         {
             break;
         }
+
+        // New contig/chromosome
         if (tid != prev_tid)
         {
             mod_counter.clear();
@@ -996,8 +1013,8 @@ int main(int argc, char **argv)
             fprintf(stderr, "Trying to access reference beyond end!");
             exit(1);
         }
-        // Only output CpG sites.
 
+        // Only output sites with correct context (e.g. CpG sites).
         for (std::vector<Modification>::iterator cmod = modifications.begin(); cmod != modifications.end(); cmod++)
         {
             // require one full context length at beginning and end of reference
@@ -1006,10 +1023,9 @@ int main(int argc, char **argv)
             int m_fwd = cmod->fwd_context.compare(0, std::string::npos, ref_seq + pos - cmod->fwd_ctx_pos, cmod->fwd_context.length());
             int m_rev = cmod->rev_context.compare(0, std::string::npos, ref_seq + pos - cmod->rev_ctx_pos, cmod->fwd_context.length());
 
+            // Correct context
             if (m_fwd == 0 || m_rev == 0)
             {
-                // std::cerr << pos << ':' << ref_seq[pos - 1] << ref_seq[pos] << ref_seq[pos + 1] << std::endl;
-
                 if (!plp_procced)
                 {
                     process_mod_pileup0(h, p, tid, pos, n, ref_seq[pos]);
@@ -1017,16 +1033,8 @@ int main(int argc, char **argv)
                     plp_procced = true;
                 }
             }
-            // mod_counter.check();
-            //  if (mod_counter.size() > 0)
-            //  {
-            //      std::cout << "\nAlku : " << mod_counter.begin()->second << '\n';
-            //      auto apu = mod_counter.from(0);
-            //      std::cout << "0 paikan toinen: "
-            //                << apu->second;
-            //      std::cout << "\nAlku uudelleen: " << mod_counter.begin()->second << '\n';
-            //      // assert(mod_counter.begin() == mod_counter.from(0));
-            //  }
+
+            // Output site
             if (split_strand_flag)
             {
                 for (std::map<mod_key, _mod_count_t>::iterator it = mod_counter.from(pos);
@@ -1042,6 +1050,7 @@ int main(int argc, char **argv)
             }
             else
             {
+                // Gone past the 'latter' of the modified sites of the motif.
                 if ((cmod->fwd_ctx_pos < cmod->rev_ctx_pos && m_rev == 0) ||
                     (cmod->fwd_ctx_pos > cmod->rev_ctx_pos && m_fwd == 0))
                 {
@@ -1049,39 +1058,12 @@ int main(int argc, char **argv)
                 };
             }
         }
-        // if (mod_counter.size() > 10000)
-        // {
-        //     mod_counter.erase(mod_counter.begin(),
-        //                       mod_counter.find(mod_key(pos - 10)));
-        //     std::cerr << "Erasing stuff..\n";
-        // }
-        // mod_counter.erase_upto(pos);
-        // if (mod_counter.mod_count_store.size() > 0)
-        // {
-        //     mod_counter.mod_count_store[mod_key(pos)] = _mod_count_t();
-        //     // mod_counter.mod_count_store.erase(mod_counter.at(pos)); // mod_counter.begin()); //,
-        //     //                                    mod_counter.at(pos));
 
-        //     std::cerr
-        //         << "---\n"
-        //         << mod_counter;
-        //     if (mod_counter.begin() != mod_counter.end())
-        //     {
-        //         std::cerr << mod_counter.begin()->first << "<->";
-        //     }
-
-        //     if (mod_counter.mod_count_store.lower_bound(mod_key(pos)) != mod_counter.end())
-        //     {
-        //         std::cerr << mod_counter.mod_count_store.lower_bound(mod_key(pos))->first;
-        //     }
-        //     std::cerr << '\n';
-        // }
+        // Remove the cached methyl counts.
         if (mod_counter.begin()->first.pos < (pos - 100))
         {
             mod_counter.erase_upto(pos - 10);
         }
-        // assert(mod_counter.size() == 0);
-        // mod_counter.clear();
     }
     bam_plp_destroy(iter);
 

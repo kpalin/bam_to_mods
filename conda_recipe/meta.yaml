@@ -11,11 +11,11 @@ source:
 
 
 build:
-  number: 0
+  number: 1
 
 requirements:
   host:
-    - htslib >=1.14
+    - htslib >=1.16
   build:
     - {{ compiler('cxx') }}
     - make

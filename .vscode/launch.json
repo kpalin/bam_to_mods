@@ -9,14 +9,15 @@
             "miDebuggerPath": "/home/kpalin/miniconda3/envs/bio_dev/bin/gdb",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bam_to_mods",
+            "program": "${workspaceFolder}/debug/bam_to_mods",
             "args": [
-                "-R",
-                "chr2:170000-180000",
+                "debug/bam_to_mods",
                 "-r",
                 "/mnt/cg8/reference-genomes/GRCh38_no_alt/GRCh38_no_alt.fasta",
+                "-R",
+                "chr1:44211471-44222673",
                 "-i",
-                "/mnt/cgnano/projects/promethion/kpalin/dev/Yin_RPE_DP53_GRCh38_PAE13499/phase/longshot.Yin_RPE_DP53_GRCh38_PAE13499.raw.phased.cram"
+                "/mnt/cgnano/projects/promethion/221213/ont_pipe/My_6621m1_20_0018/phase/longshot.My_6621m1_20_0018.raw.phased.cram\n"
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
