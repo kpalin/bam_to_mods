@@ -890,6 +890,21 @@ int parse_options(int argc, char **argv)
     }
     return 0;
 }
+/**
+ * @brief Change all characters in the string arr to upper case.
+ *
+ * @param arr
+ * @return char*
+ */
+char *to_upper_char_arr(char *arr)
+{
+    char *p;
+    for (p = arr; *p; p++)
+    {
+        *p = (char)toupper(*p);
+    }
+    return arr;
+}
 #if HTS_VERSION < 101600
 #error "Requires HTSLIB version at least 1.16. "
 #endif
@@ -939,6 +954,7 @@ int main(int argc, char **argv)
     std::cerr << "input_bam_file:" << input_bam_file << std::endl;
     std::cerr << "min_mod_prob:" << min_mod_prob << " = " << (min_mod_prob + 0.5) / 256. << std::endl;
     std::cerr << "max_mod_prob:" << max_mod_prob << " = " << (max_mod_prob + 0.5) / 256. << std::endl;
+    std::cerr << "Version: " << btm_version.major << '.' << btm_version.minor << '.' << btm_version.patch << std::endl;
 
     for (std::vector<Modification>::iterator itr = modifications.begin(); itr != modifications.end(); itr++)
     {
@@ -1038,6 +1054,7 @@ int main(int argc, char **argv)
             else
             {
                 std::cerr << "Reading chromosome " << ref_seq_name << '\n';
+                ref_seq = to_upper_char_arr(ref_seq);
             }
             prev_tid = tid;
         }
