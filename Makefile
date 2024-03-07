@@ -16,9 +16,9 @@ LIBS := -lhts $(LIBS) -lpthread
 #
 DBGDIR = debug
 DBGEXE = $(DBGDIR)/$(EXE)
-DBGOBJS = $(addprefix $(DBGDIR)/, $(OBJS))
-DBGCFLAGS = $(DEBUG_CXXFLAGS) -g -O0 -DDEBUG  -fno-tree-vectorize  -Wextra
-
+DBGOBJS = $(addprefix $(DBGDIR)/, $(OBJS))  
+DBGCFLAGS = $(DEBUG_CXXFLAGS) -g -O0 -DDEBUG  -fno-tree-vectorize  -Wextra  -fsanitize=address
+DBGLDFLAGS = $(LDFLAGS) -fsanitize=address 
 #
 # Release build settings
 #
@@ -38,7 +38,7 @@ all: prep release debug
 debug: $(DBGEXE)
 
 $(DBGEXE): $(DBGOBJS)
-	$(CXX) $(LIBS) $(LDFLAGS)  -o $(DBGEXE) $^
+	$(CXX) $(LIBS) $(DBGLDFLAGS)  -o $(DBGEXE) $^
 
 $(DBGDIR)/%.o: src/%.cpp
 	$(CXX) -c $(CFLAGS) $(DBGCFLAGS) -o $@ $<

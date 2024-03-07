@@ -13,11 +13,11 @@
             "args": [
                 "debug/bam_to_mods",
                 "-r",
-                "/mnt/cg8/reference-genomes/GRCh38_no_alt/GRCh38_no_alt.fasta",
-                "-R",
-                "chr1:44211471-44222673",
+                "/mnt/cg8/reference-genomes/chm13v2.0_maskedY_rCRS/chm13v2.0_maskedY_rCRS.fa",
+                "-m",
+                "A+a.0",
                 "-i",
-                "/mnt/cgnano/projects/promethion/221213/ont_pipe/My_6621m1_20_0018/phase/longshot.My_6621m1_20_0018.raw.phased.cram\n"
+                "/home/kpalin/software/bam_to_mods/test/test_6aA_5mC_5hC.bam"
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

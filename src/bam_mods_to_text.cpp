@@ -188,7 +188,7 @@ public:
     rev_ctx_pos = fwd_context.length() - fwd_ctx_pos - 1;
 
     assert(fwd_ctx_pos >= 0);
-    assert(rev_ctx_pos > 0);
+    assert(rev_ctx_pos >= 0);
 
     canonical = fwd_context[fwd_ctx_pos];
 
@@ -220,7 +220,9 @@ public:
       << rev_context << " " << mod_str << canonical << " " << rev_ctx_pos << ' '
       << (rev_strand ? '+' : '-');
     return s.str();
-  }
+  };
+  // True iff modification motif is palindromic.
+  bool is_palindromic() { return (fwd_context == rev_context); }
 };
 
 std::vector<Modification> modifications;
@@ -935,6 +937,13 @@ int main(int argc, char **argv) {
             HTS_VERSION, hts_version());
     exit(2);
   }
+  if (strcmp(hts_version(), "1.16") < 0) {
+    fprintf(stderr,
+            "Need htslib version at least 1.16. Compiled with %d. Currently "
+            "having %s.\n",
+            HTS_VERSION, hts_version());
+    exit(2);
+  }
 
   // First argument: reference genome
   std::cerr << "reference_fasta_file:" << reference_fasta_file << std::endl;
@@ -943,6 +952,16 @@ int main(int argc, char **argv) {
             << (min_mod_prob + 0.5) / 256. << std::endl;
   std::cerr << "max_mod_prob:" << max_mod_prob << " = "
             << (max_mod_prob + 0.5) / 256. << std::endl;
+  std::cerr << "Version: " << btm_version.major << '.' << btm_version.minor
+            << '.' << btm_version.patch << std::endl;
+  // First argument: reference genome
+  std::cerr << "reference_fasta_file:" << reference_fasta_file << std::endl;
+  std::cerr << "input_bam_file:" << input_bam_file << std::endl;
+  std::cerr << "min_mod_prob:" << min_mod_prob << " = "
+            << (min_mod_prob + 0.5) / 256. << std::endl;
+  std::cerr << "max_mod_prob:" << max_mod_prob << " = "
+            << (max_mod_prob + 0.5) / 256. << std::endl;
+  std::cerr << "split_strands:" << (split_strand_flag ? "True\n" : "False\n");
   std::cerr << "Version: " << btm_version.major << '.' << btm_version.minor
             << '.' << btm_version.patch << std::endl;
 
@@ -1064,13 +1083,14 @@ int main(int argc, char **argv) {
       }
 
       // Output site
-      if (split_strand_flag) {
+      if (split_strand_flag || !cmod->is_palindromic()) {
         for (std::map<mod_key, _mod_count_t>::iterator it =
                  mod_counter.from(pos);
              it != mod_counter.to(pos); it++) {
           assert(it != mod_counter.end());
           if ((m_fwd == 0 && it->first.read_isrev == 0) ||
               ((m_rev == 0 && it->first.read_isrev == 1))) {
+
             output_mod(std::cout, it->first, it->second, ref_seq_name,
                        cmod->mod_code);
           }
