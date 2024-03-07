@@ -1,8 +1,7 @@
-struct _version
-{
-    int major;
-    int minor;
-    int patch;
+struct _version {
+  int major;
+  int minor;
+  int patch;
 };
 
-static const _version btm_version{0, 3, 0};
+static const _version btm_version{0, 3, 1};
