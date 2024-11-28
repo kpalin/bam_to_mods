@@ -19,7 +19,7 @@ function _cleanup {
 }
 trap _cleanup EXIT
 
-./debug/bam_to_mods -r /mnt/cg8/reference-genomes/chm13v2.0_maskedY_rCRS/chm13v2.0_maskedY_rCRS.fa -i test_6aA_5mC_5hC.bam -m A+a.0 \
-    >$TEMPDIR/run_Aa.out
+./debug/bam_to_mods -r /mnt/cg8/reference-genomes/chm13v2.0_maskedY_rCRS/chm13v2.0_maskedY_rCRS.fa -i test/test_6aA_5mC_5hC.bam -m A+a.0 -m CG+m.0 \
+    >$TEMPDIR/run_Aa.out ||true
 
-diff test/test_6aA_5mC_5hC.Aa.out >$TEMPDIR/run_Aa.out
+diff test/test_6aA_5mC_5hC.Aa.out $TEMPDIR/run_Aa.out

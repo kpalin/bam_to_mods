@@ -4,4 +4,4 @@ struct _version {
   int patch;
 };
 
-static const _version btm_version{0, 3, 1};
+static const _version btm_version{0, 3, 2};

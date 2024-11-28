@@ -424,7 +424,7 @@ public:
     return it;
   }
   std::string output_mod_joinstrand(char const *ref_name, int pos,
-                                    Modification &cmod);
+                                    Modification &cmod, int which_strand);
   void check() {
     if (!mod_count_store.empty()) {
       // std::cerr << mod_count_store.begin()->first << '@' <<
@@ -496,9 +496,10 @@ std::string mod_count_to_str(int mod_code, int mod_count, int called_sites) {
   ss << '\t' << mod_freq << '\n';
   return ss.str();
 }
-
+// which_strand == 0 forward, == 1 reverse, -1==both
 std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos,
-                                              Modification &cmod) {
+                                              Modification &cmod,
+                                              int which_strand) {
   std::stringstream ss, out_stream;
   _mod_count_t mod_counts_total;
 
@@ -517,30 +518,36 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos,
 
   // pair<phase_set,haplotype> -> _mod_count_t
   std::map<std::pair<int, int>, _mod_count_t> cnts;
-  // std::cerr << "pos : " << pos << " +" << fwd_pos << " -" << rev_pos << '\n';
-  for (std::map<mod_key, _mod_count_t>::iterator it = this->from(fwd_pos, 0);
-       it != this->to(fwd_pos); it++) {
-    // std::cerr << "fwd it: " << it->first << " -  " << it->second << '\n';
-    if (it->first.read_isrev == 0) {
-      // std::cerr << it->first.ps << ',' << it->first.hp << " +@ " <<
-      // cnts[std::pair(it->first.ps, it->first.hp)] << " + " << it->second;
 
-      cnts[std::pair<int, int>(it->first.ps, it->first.hp)] =
-          cnts[std::pair<int, int>(it->first.ps, it->first.hp)] + it->second;
-      // std::cerr << " = " << cnts[std::pair(it->first.ps, it->first.hp)] <<
-      // '\n';
+  if (which_strand == 0 || which_strand == -1) {
+    // std::cerr << "pos : " << pos << " +" << fwd_pos << " -" << rev_pos <<
+    // '\n';
+    for (std::map<mod_key, _mod_count_t>::iterator it = this->from(fwd_pos, 0);
+         it != this->to(fwd_pos); it++) {
+      // std::cerr << "fwd it: " << it->first << " -  " << it->second << '\n';
+      if (it->first.read_isrev == 0) {
+        // std::cerr << it->first.ps << ',' << it->first.hp << " +@ " <<
+        // cnts[std::pair(it->first.ps, it->first.hp)] << " + " << it->second;
+
+        cnts[std::pair<int, int>(it->first.ps, it->first.hp)] =
+            cnts[std::pair<int, int>(it->first.ps, it->first.hp)] + it->second;
+        // std::cerr << " = " << cnts[std::pair(it->first.ps, it->first.hp)] <<
+        // '\n';
+      }
     }
   }
 
-  for (std::map<mod_key, _mod_count_t>::iterator it = this->from(rev_pos, 0);
-       it != this->to(rev_pos); it++) {
-    if (it->first.read_isrev == 1) {
-      // std::cerr << it->first.ps << ',' << it->first.hp << " -@ " <<
-      // cnts[std::pair(it->first.ps, it->first.hp)] << " + " << it->second;
-      cnts[std::pair<int, int>(it->first.ps, it->first.hp)] =
-          cnts[std::pair<int, int>(it->first.ps, it->first.hp)] + it->second;
-      // std::cerr << " = " << cnts[std::pair(it->first.ps, it->first.hp)] <<
-      // '\n';
+  if (which_strand == 1 || which_strand == -1) {
+    for (std::map<mod_key, _mod_count_t>::iterator it = this->from(rev_pos, 0);
+         it != this->to(rev_pos); it++) {
+      if (it->first.read_isrev == 1) {
+        // std::cerr << it->first.ps << ',' << it->first.hp << " -@ " <<
+        // cnts[std::pair(it->first.ps, it->first.hp)] << " + " << it->second;
+        cnts[std::pair<int, int>(it->first.ps, it->first.hp)] =
+            cnts[std::pair<int, int>(it->first.ps, it->first.hp)] + it->second;
+        // std::cerr << " = " << cnts[std::pair(it->first.ps, it->first.hp)] <<
+        // '\n';
+      }
     }
   }
 
@@ -577,15 +584,18 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos,
   const int called_sites = mod_counts_total.canonical_count.at(cmod.mod_code) +
                            mod_counts_total.modified_count.at(cmod.mod_code);
   assert(called_sites <= mod_counts_total.total_count);
+  if (called_sites == 0) {
+    return std::string("");
+  } else {
+    out_stream << ss.str() << "*\t*\t" << called_sites << '\t'
+               << mod_counts_total.total_count - called_sites << '\t'
+               << mod_counts_total.other_count << '\t';
+    out_stream << mod_count_to_str(
+        cmod.mod_code, mod_counts_total.modified_count[cmod.mod_code],
+        called_sites);
 
-  out_stream << ss.str() << "*\t*\t" << called_sites << '\t'
-             << mod_counts_total.total_count - called_sites << '\t'
-             << mod_counts_total.other_count << '\t';
-  out_stream << mod_count_to_str(cmod.mod_code,
-                                 mod_counts_total.modified_count[cmod.mod_code],
-                                 called_sites);
-
-  return out_stream.str();
+    return out_stream.str();
+  }
 }
 /* Add count of canonical base for all modifications or single one */
 void ModCounter::add_canonical(int pos, int read_is_rev, int ps, int hp,
@@ -1083,7 +1093,7 @@ int main(int argc, char **argv) {
       }
 
       // Output site
-      if (split_strand_flag || !cmod->is_palindromic()) {
+      if (split_strand_flag) {
         for (std::map<mod_key, _mod_count_t>::iterator it =
                  mod_counter.from(pos);
              it != mod_counter.to(pos); it++) {
@@ -1102,8 +1112,12 @@ int main(int argc, char **argv) {
         if ((cmod->fwd_ctx_pos < cmod->rev_ctx_pos && m_rev == 0) ||
             (cmod->fwd_ctx_pos > cmod->rev_ctx_pos && m_fwd == 0)) {
           std::cout << mod_counter.output_mod_joinstrand(ref_seq_name, pos,
-                                                         *cmod);
-        };
+                                                         *cmod, -1);
+        } else if (cmod->fwd_ctx_pos == cmod->rev_ctx_pos &&
+                   (m_rev == 0 || m_fwd == 0)) {
+          std::cout << mod_counter.output_mod_joinstrand(
+              ref_seq_name, pos, *cmod, (m_fwd == 0 ? 0 : 1));
+        }
       }
     }
 
