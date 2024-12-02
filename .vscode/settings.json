@@ -1,5 +1,7 @@
 {
     "files.associations": {
         "kvec.h": "c"
-    }
+    },
+    "C_Cpp.default.intelliSenseMode": "",
+    "editor.formatOnSave": false
 }

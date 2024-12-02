@@ -4,7 +4,8 @@
         {
             "label": "make",
             "type": "shell",
-            "command": "~/bin/envbash.sh -n /home/kpalin/miniconda3/envs/bio_dev/ make",
+            //"command": "~/bin/envbash.sh -n /home/kpalin/miniconda3/envs/bio_dev/ make",
+            "command": "~/bin/envbash.sh -n /scratch/kpalin/miniconda3/envs/cxx_dev make",
             "problemMatcher": [
                 "$gcc"
             ],
