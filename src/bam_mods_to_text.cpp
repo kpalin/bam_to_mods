@@ -575,7 +575,6 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos,
     out_stream << "#chromosome\tstart\tend\thaplotype\tphase_set\tcalled_"
                   "reads\tuncalled_reads\tmismatch_"
                   "reads\tmodification\tmodified_reads\tmodified_prop\tcall_code\n";
-    header_flag = 0;
   }
 
   ss << chrom << '\t' << pos + 2 - cmod.fwd_context.length() << '\t' << pos + 2
@@ -688,6 +687,7 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos,
                << '\t' << cmod.def_str;
 
     out_stream << '\n';
+    header_flag = 0;
     return out_stream.str();
   }
 }
@@ -953,6 +953,10 @@ int parse_options(int argc, char **argv)
       break;
 
     case 'm':
+      if(modifications.size()>0) {
+        std::cerr<< "Will not work with more than one modification (issue with mCpG:s and GpmC:s). Bailing out.. Sorry.."<<std::endl;
+        abort();
+      }
       modifications.push_back(Modification(optarg));
       break;
     case 'r':

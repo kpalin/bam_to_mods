@@ -17,8 +17,8 @@ LIBS := -lhts $(LIBS) -lpthread
 DBGDIR = debug
 DBGEXE = $(DBGDIR)/$(EXE)
 DBGOBJS = $(addprefix $(DBGDIR)/, $(OBJS))  
-DBGCFLAGS = $(DEBUG_CXXFLAGS) -g -O0 -DDEBUG  -fno-tree-vectorize  -Wextra  -fsanitize=address
-DBGLDFLAGS = $(LDFLAGS) -fsanitize=address 
+DBGCFLAGS = $(DEBUG_CXXFLAGS) -g -O0 -DDEBUG  -fno-tree-vectorize  -Wextra # -fsanitize=address
+DBGLDFLAGS = $(LDFLAGS)   #-fsanitize=address 
 #
 # Release build settings
 #

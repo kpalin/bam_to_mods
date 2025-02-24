@@ -12,12 +12,16 @@
             "program": "${workspaceFolder}/debug/bam_to_mods",
             "args": [
                 "debug/bam_to_mods",
+               // "-m",
+               // "CG+m.0",
+                "-m",
+                "GC+m.1",
                 "-r",
                 "/mnt/cg8/reference-genomes/chm13v2.0_maskedY_rCRS/chm13v2.0_maskedY_rCRS.fa",
-                "-m",
-                "A+a.0",
+                "-R",
+                "chr1:1704-17281",
                 "-i",
-                "/home/kpalin/software/bam_to_mods/test/test_6aA_5mC_5hC.bam"
+                "/mnt/cgnano/projects/promethion/250124/GP5d_MCviPI_barcodes/ont_pipe_chm13v2/GP5d-M_CviPI-10nmgold-0_5ul/phase/longshot.GP5d-M_CviPI-10nmgold-0_5ul.raw.phased.cram"
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
