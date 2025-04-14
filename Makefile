@@ -29,8 +29,17 @@ RELCFLAGS = $(CXXFLAGS) -O3 -DNDEBUG
 
 .PHONY: all clean debug prep release remake
 
+# Testing
+BATS=./test/bats/bin/bats
+TESTS=test/test.bats
+
 # Default build
 all: prep release debug
+
+test: $(DBGEXE) $(TESTS)
+	$(BATS) $(TESTS)
+
+
 
 #
 # Debug rules
