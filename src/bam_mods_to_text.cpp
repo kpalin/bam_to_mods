@@ -743,7 +743,7 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id,
                          _mod_count_t &cnts, const char *chrom,
                          Modification &out_mod) {
   // std::cout << mod_id << 'x' << cnts << '\n';
-  assert(false);
+  
   const int called_sites = cnts.canonical_count.at(out_mod.mod_code) +
                            cnts.modified_count.at(out_mod.mod_code);
   assert(called_sites <= cnts.total_count);
@@ -751,10 +751,10 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id,
   if (header_flag) {
     out_stream << "#chromosome\tposition\tstrand\thaplotype\tphase_set\tcalled_"
                   "reads\tuncalled_reads\tmismatch_"
-                  "reads\tmodification\tmodified_reads\tmodified_prop\n";
+                  "reads\tmodification\tmodified_reads\tmodified_prop\tcall_code\n";
     header_flag = 0;
   }
-  abort();
+  //abort();
   // for (std::map<int, int>::iterator it = cnts.modified_count.begin();
   //      it != cnts.modified_count.end(); it++)
 
@@ -790,10 +790,10 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id,
     out_stream << ss.str();
 
     out_stream << mod_count_to_str(
-        out_mod.mod_code, cnts.modified_count[out_mod.mod_code], called_sites);
+        out_mod.mod_code, cnts.modified_count[out_mod.mod_code], called_sites)<<'\t'<<out_mod.def_str;
   }
 
-  return out_stream;
+  return out_stream<<'\n';
 }
 
 static char *reference_fasta_file = NULL;

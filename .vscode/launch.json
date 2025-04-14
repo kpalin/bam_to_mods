@@ -11,20 +11,11 @@
             "request": "launch",
             "program": "${workspaceFolder}/debug/bam_to_mods",
             "args": [
-                "debug/bam_to_mods",
-               // "-m",
-               // "CG+m.0",
-                "-m",
-                "GC+m.1",
-                "-r",
-                "/mnt/cg8/reference-genomes/chm13v2.0_maskedY_rCRS/chm13v2.0_maskedY_rCRS.fa",
-                "-R",
-                "chr1:1704-17281",
-                "-i",
-                "/mnt/cgnano/projects/promethion/250124/GP5d_MCviPI_barcodes/ont_pipe_chm13v2/GP5d-M_CviPI-10nmgold-0_5ul/phase/longshot.GP5d-M_CviPI-10nmgold-0_5ul.raw.phased.cram"
+                "debug/bam_to_mods","--split_strand","-m", "CG+m.0", "-i", "data/fibreseq_demo_pacbio.bam" ,"-r","data/ref.fa.gz","-R","chr20:46138245-46150899"
+               
             ],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
