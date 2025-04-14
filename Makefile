@@ -10,7 +10,7 @@ CFLAGS += -Wall
 SRCS = bam_mods_to_text.cpp
 OBJS = $(SRCS:.cpp=.o)
 EXE  = bam_to_mods
-LIBS := -lhts $(LIBS) -lpthread
+LIBS :=   -lhts -lbz2 -lhts -lm -lpthread -lz -llzma -lpthread
 #
 # Debug build settings
 #
@@ -47,10 +47,10 @@ test: $(DBGEXE) $(TESTS)
 debug: $(DBGEXE)
 
 $(DBGEXE): $(DBGOBJS)
-	$(CXX) $(LIBS) $(DBGLDFLAGS)  -o $(DBGEXE) $^
+	$(CXX) $^  $(LDFLAGS) $(LIBS) $(DBGLDFLAGS)  -o $(DBGEXE)
 
 $(DBGDIR)/%.o: src/%.cpp
-	$(CXX) -c $(CFLAGS) $(DBGCFLAGS) -o $@ $<
+	$(CXX) -c $(CFLAGS) $(DBGCFLAGS)  -o $@ $<
 
 #
 # Release rules
@@ -58,7 +58,7 @@ $(DBGDIR)/%.o: src/%.cpp
 release: $(RELEXE)
 
 $(RELEXE): $(RELOBJS)
-	$(CXX) $(LIBS) $(LDFLAGS)  -o $(RELEXE) $^
+	$(CXX)  $^ $(LDFLAGS) $(LIBS) $(LDFLAGS)  -o $(RELEXE)
 
 $(RELDIR)/%.o: src/%.cpp
 	$(CXX) -c $(CFLAGS) $(RELCFLAGS) -o $@ $<

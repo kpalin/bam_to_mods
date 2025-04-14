@@ -25,3 +25,14 @@ usage: debug/bam_to_mods [-c 209] [-C 46]  [-b 7]  [-q 20] [-E 1796] [-m CG+m.0]
 
 Using htslib version 1.16.
 ```
+
+## Installing htslib
+
+```
+wget https://github.com/samtools/htslib/releases/download/1.21/htslib-1.21.tar.bz2
+tar -jxvf htslib-1.21.tar.bz2
+cd htslib-1.21
+./configure
+make
+make install
+```

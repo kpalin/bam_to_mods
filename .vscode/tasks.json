@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "make",
+            "label": "make: cxx_dev",
             "type": "shell",
             //"command": "~/bin/envbash.sh -n /home/kpalin/miniconda3/envs/bio_dev/ make",
             "command": "~/bin/envbash.sh -n /scratch/kpalin/miniconda3/envs/cxx_dev make",
@@ -10,6 +10,17 @@
                 "$gcc"
             ],
             "group": "build"
+        },
+        {
+            "label": "make: plain",
+            "type": "shell",
+            //"command": "~/bin/envbash.sh -n /home/kpalin/miniconda3/envs/bio_dev/ make",
+            "command": "make",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": "build"
         }
+
     ]
 }

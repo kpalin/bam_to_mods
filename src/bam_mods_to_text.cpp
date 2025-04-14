@@ -180,6 +180,13 @@ public:
       exit(1);
     };
 
+    rev_strand = (cm[2].str()[0] == '-');
+    if (rev_strand) {
+      std::cerr << "Sorry, can't handle reverse strand modifications"
+                << std::endl;
+      //exit(1);
+    }
+
     mod_str = std::string(cm[3].str());
     char *p;
     mod_code = (mod_id_code)-strtol(mod_str.c_str(), &p, 10);
@@ -192,12 +199,24 @@ public:
         exit(1);
       }
     }
-    fwd_context = std::string(cm[1]);
-    rev_context = revComplement(fwd_context);
+    if(rev_strand) {
+      rev_context = std::string(cm[1]);
+      fwd_context= revComplement(rev_context);
+  
+    } else {
+      fwd_context = std::string(cm[1]);
+      rev_context = revComplement(fwd_context);
+  
+    }
 
     // fwd_ctx_pos = atoi(cm[5].str().c_str());
     fwd_ctx_pos = strtol(cm[5].str().c_str(), &p, 10);
     rev_ctx_pos = fwd_context.length() - fwd_ctx_pos - 1;
+    if(rev_strand){
+      auto tmp=fwd_ctx_pos ;
+      fwd_ctx_pos = rev_ctx_pos;
+      rev_ctx_pos = tmp;
+    }
 
     assert(fwd_ctx_pos >= 0);
     assert(rev_ctx_pos >= 0);
@@ -206,14 +225,8 @@ public:
 
     assert(canonical == complement(rev_context[rev_ctx_pos]));
 
-    rev_strand = (cm[2].str()[0] == '-');
+    
     missing_is_unmodified = (cm[4].str()[0] == '.');
-
-    if (rev_strand) {
-      std::cerr << "Sorry, can't handle reverse strand modifications"
-                << std::endl;
-      exit(1);
-    }
 
     if (!missing_is_unmodified) {
       std::cerr << "Sorry, can't handle ambiguous modification calls"
