@@ -64,6 +64,12 @@ typedef struct {
   hts_itr_t *itr;
 } plp_dat;
 
+enum WhichStrandOutput {
+  STRAND_FORWARD = 0,
+  STRAND_REVERSE = 1,
+  STRAND_BOTH = -1
+};
+
 static int readaln(void *data, bam1_t *b) {
   plp_dat *g = (plp_dat *)data;
   int ret;
@@ -153,17 +159,23 @@ struct mod_id_code {
 class Modification {
 public:
   std::string def_str; // Full definition string for this modification type,
-                       // context, strand, modification, base position
+                       // context, strand, modification, base position e.g.
+                       // "GC+m.1"  or 'T-a.0'
   std::string mod_str; // Character symbol, or numeric ID for this chemical
-                       // modifictation (Ignoring base context)
-  std::string fwd_context;
-  std::string rev_context;
-  char canonical;
+                       // modifictation (Ignoring base context) e.g. 'm' or 'a'
+  std::string fwd_context; // Sequence context in reference forward strand for
+                           // reads mapping in forward strand, e.g. "GC" or 'A'
+  std::string rev_context; // Sequence context in reference forward strand for
+                           // reads mapping in reverse strand, e.g. "GC" or 'T'
+  char canonical; // Read original strand base for the modification, e.g. 'C' or
+                  // 'T'
 
-  mod_id_code mod_code;
-  int fwd_ctx_pos;
+  mod_id_code mod_code; // Numerical code matching mod_str
+  int fwd_ctx_pos; // Position of the modified base in the fwd_context, e.g. 1
+                   // or 0
   int rev_ctx_pos;
-  int rev_strand;
+  int rev_strand; // Strand of the modification with respect to the original
+                  // read strand, e.g. 0 for '+' strand and 1 for '-' strand
   int missing_is_unmodified;
 
   // E.g.  For methylation modification on C:s at CG context:
@@ -199,21 +211,20 @@ public:
         exit(1);
       }
     }
-    if(rev_strand) {
+    if (rev_strand) {
       rev_context = std::string(cm[1]);
-      fwd_context= revComplement(rev_context);
-  
+      fwd_context = revComplement(rev_context);
+
     } else {
       fwd_context = std::string(cm[1]);
       rev_context = revComplement(fwd_context);
-  
     }
 
     // fwd_ctx_pos = atoi(cm[5].str().c_str());
     fwd_ctx_pos = strtol(cm[5].str().c_str(), &p, 10);
     rev_ctx_pos = fwd_context.length() - fwd_ctx_pos - 1;
-    if(rev_strand){
-      auto tmp=fwd_ctx_pos ;
+    if (rev_strand) {
+      auto tmp = fwd_ctx_pos;
       fwd_ctx_pos = rev_ctx_pos;
       rev_ctx_pos = tmp;
     }
@@ -225,7 +236,6 @@ public:
 
     assert(canonical == complement(rev_context[rev_ctx_pos]));
 
-    
     missing_is_unmodified = (cm[4].str()[0] == '.');
 
     if (!missing_is_unmodified) {
@@ -282,14 +292,23 @@ public:
 
     this->other_count += c.other_count;
     this->total_count += c.total_count;
+
+    std::set<mod_id_code> reported_mods{};
+
     for (std::vector<Modification>::iterator cmod = modifications.begin();
          cmod != modifications.end(); cmod++) {
-      this->modified_count[cmod->mod_code] +=
-          c.modified_count.at(cmod->mod_code);
-      this->modified_expected[cmod->mod_code] +=
-          c.modified_expected.at(cmod->mod_code);
-      this->canonical_count[cmod->mod_code] +=
-          c.canonical_count.at(cmod->mod_code);
+      if (reported_mods.find(cmod->mod_code) ==
+          reported_mods
+              .end()) { // Only sum matching modifications, not contexts
+        reported_mods.insert(cmod->mod_code);
+
+        this->modified_count[cmod->mod_code] +=
+            c.modified_count.at(cmod->mod_code);
+        this->modified_expected[cmod->mod_code] +=
+            c.modified_expected.at(cmod->mod_code);
+        this->canonical_count[cmod->mod_code] +=
+            c.canonical_count.at(cmod->mod_code);
+      }
 
       // std::cerr << this->modified_count.at(cmod->mod_code) << '+' <<
       // c.modified_count.at(cmod->mod_code) << '=' <<
@@ -449,7 +468,8 @@ public:
     return it;
   }
   std::string output_mod_joinstrand(char const *ref_name, int pos,
-                                    Modification &cmod, int which_strand);
+                                    Modification &cmod,
+                                    WhichStrandOutput which_strand);
   void check() {
     if (!mod_count_store.empty()) {
       // std::cerr << mod_count_store.begin()->first << '@' <<
@@ -522,10 +542,11 @@ std::string mod_count_to_str(mod_id_code mod_code, int mod_count,
   ss << '\t' << mod_freq;
   return ss.str();
 }
+
 // which_strand == 0 forward, == 1 reverse, -1==both
 std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos,
                                               Modification &cmod,
-                                              int which_strand) {
+                                              WhichStrandOutput which_strand) {
   std::stringstream ss, out_stream;
   _mod_count_t mod_counts_total;
 
@@ -545,7 +566,7 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos,
   // pair<phase_set,haplotype> -> _mod_count_t
   std::map<std::pair<int, int>, _mod_count_t> cnts;
 
-  if (which_strand == 0 || which_strand == -1) {
+  if (which_strand == STRAND_FORWARD || which_strand == STRAND_BOTH) {
     // std::cerr << "pos : " << pos << " +" << fwd_pos << " -" << rev_pos <<
     // '\n';
     for (std::map<mod_key, _mod_count_t>::iterator it = this->from(fwd_pos, 0);
@@ -563,7 +584,7 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos,
     }
   }
 
-  if (which_strand == 1 || which_strand == -1) {
+  if (which_strand == STRAND_REVERSE || which_strand == STRAND_BOTH) {
     for (std::map<mod_key, _mod_count_t>::iterator it = this->from(rev_pos, 0);
          it != this->to(rev_pos); it++) {
       if (it->first.read_isrev == 1) {
@@ -720,12 +741,13 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p, int tid, int pos,
     } else {
       mod_counter.add_match(pos, read_is_rev, ps, hp);
       hts_base_mod_state *m = (hts_base_mod_state *)p->cd.p;
-      hts_base_mod mod[5];
+#define MAX_MOD_COUNT 10
+      hts_base_mod mod[MAX_MOD_COUNT];
       int nm;
-      if ((nm = bam_mods_at_qpos(p->b, p->qpos, m, mod, 5)) > 0) {
+      if ((nm = bam_mods_at_qpos(p->b, p->qpos, m, mod, MAX_MOD_COUNT)) > 0) {
         int j;
         std::set<std::pair<mod_id_code, int>> found_mods;
-        for (j = 0; j < nm && j < 5; j++) {
+        for (j = 0; j < nm && j < MAX_MOD_COUNT; j++) {
           found_mods.insert(
               std::make_pair((mod_id_code)mod[j].modified_base, mod[j].strand));
           if (mod[j].qual <= max_mod_prob) {
@@ -756,20 +778,21 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id,
                          _mod_count_t &cnts, const char *chrom,
                          Modification &out_mod) {
   // std::cout << mod_id << 'x' << cnts << '\n';
-  
+
   const int called_sites = cnts.canonical_count.at(out_mod.mod_code) +
                            cnts.modified_count.at(out_mod.mod_code);
   assert(called_sites <= cnts.total_count);
   std::stringstream ss;
   if (header_flag) {
-    out_stream << "#chromosome\tposition\tstrand\thaplotype\tphase_set\tcalled_"
-                  "reads\tuncalled_reads\tmismatch_"
-                  "reads\tmodification\tmodified_reads\tmodified_prop\tcall_code\n";
+    out_stream
+        << "#chromosome\tposition\tstrand\thaplotype\tphase_set\tcalled_"
+           "reads\tuncalled_reads\tmismatch_"
+           "reads\tmodification\tmodified_reads\tmodified_prop\tcall_code\n";
     header_flag = 0;
   }
-  //abort();
-  // for (std::map<int, int>::iterator it = cnts.modified_count.begin();
-  //      it != cnts.modified_count.end(); it++)
+  // abort();
+  //  for (std::map<int, int>::iterator it = cnts.modified_count.begin();
+  //       it != cnts.modified_count.end(); it++)
 
   // {
   //     called_sites += it->second;
@@ -802,11 +825,13 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id,
   } else {
     out_stream << ss.str();
 
-    out_stream << mod_count_to_str(
-        out_mod.mod_code, cnts.modified_count[out_mod.mod_code], called_sites)<<'\t'<<out_mod.def_str;
+    out_stream << mod_count_to_str(out_mod.mod_code,
+                                   cnts.modified_count[out_mod.mod_code],
+                                   called_sites)
+               << '\t' << out_mod.def_str;
   }
 
-  return out_stream<<'\n';
+  return out_stream << '\n';
 }
 
 static char *reference_fasta_file = NULL;
@@ -869,12 +894,7 @@ int parse_options(int argc, char **argv) {
       break;
 
     case 'm':
-      if (modifications.size() > 0) {
-        std::cerr << "Will not work with more than one modification (issue "
-                     "with mCpG:s and GpmC:s). Bailing out.. Sorry.."
-                  << std::endl;
-        abort();
-      }
+
       modifications.push_back(Modification(optarg));
       break;
     case 'r':
@@ -1094,7 +1114,8 @@ int main(int argc, char **argv) {
 
   int motif_sites_covered = 0;
 
-  while ((p = bam_plp_auto(iter, &tid, &pos, &n)) != 0) {
+  while ((p = bam_plp_auto(iter, &tid, &pos, &n)) !=
+         0) { // For each reference position
     bool plp_procced = false;
 
     if (pos > end) {
@@ -1125,7 +1146,8 @@ int main(int argc, char **argv) {
 
     // Only output sites with correct context (e.g. CpG sites).
     for (std::vector<Modification>::iterator cmod = modifications.begin();
-         cmod != modifications.end(); cmod++) {
+         cmod != modifications.end();
+         cmod++) { // For each queried modification at the reference position
       // require one full context length at beginning and end of reference
       if (pos < (int)cmod->fwd_context.length() ||
           pos > ref_len - (int)cmod->fwd_context.length())
@@ -1139,14 +1161,14 @@ int main(int argc, char **argv) {
 
       // Correct context
       if (m_fwd == 0 || m_rev == 0) {
-        if (!plp_procced) {
+        if (!plp_procced) { // Count the modified and unmodified bases.
           process_mod_pileup0(h, p, tid, pos, n, ref_seq[pos]);
           motif_sites_covered++;
           plp_procced = true;
         }
       }
 
-      // Output site
+      // Output modification at the given reference position
       // Out of region
       if ((pos <= begin) || (pos > end)) {
         continue;
@@ -1169,11 +1191,12 @@ int main(int argc, char **argv) {
         if ((cmod->fwd_ctx_pos < cmod->rev_ctx_pos && m_rev == 0) ||
             (cmod->fwd_ctx_pos > cmod->rev_ctx_pos && m_fwd == 0)) {
           std::cout << mod_counter.output_mod_joinstrand(ref_seq_name, pos,
-                                                         *cmod, -1);
+                                                         *cmod, STRAND_BOTH);
         } else if (cmod->fwd_ctx_pos == cmod->rev_ctx_pos &&
                    (m_rev == 0 || m_fwd == 0)) {
           std::cout << mod_counter.output_mod_joinstrand(
-              ref_seq_name, pos, *cmod, (m_fwd == 0 ? 0 : 1));
+              ref_seq_name, pos, *cmod,
+              (m_fwd == 0 ? STRAND_FORWARD : STRAND_REVERSE));
         }
       }
     }

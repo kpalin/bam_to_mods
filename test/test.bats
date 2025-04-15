@@ -35,16 +35,22 @@ setup() {
 }
 
 @test "can run T-a.0 fibreseq pacbio" {
-    ./debug/bam_to_mods --split_strand  -m T-a.0 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899
+    ./debug/bam_to_mods --split_strand -m T-a.0 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899
+}
+
+@test "can run CG+m.0 GC+m.1 split strand pacbio" {
+    run ./test/check_CG_GC_count_match.sh
+    assert_success
 }
 
 @test "can run CG+m.0 split strand pacbio" {
     run ./test/check_strand_split_scores.sh
-    # Covered 963 sites.
+    assert_success
 }
 
-@test "can run CG+m.0 and GC+m.1 on  pacbio" {
-    ./debug/bam_to_mods -m CG+m.0 -m GC+m.1 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899
+@test "can consistently run CG+m.0, GC+m.1, CG+h.0 and A+a.0 on ont" {
+    run ./test/check_multi_context_match.sh
+    assert_success
 }
 
 @test "can run CG+m.0 and CG+h.0 on ONT" {

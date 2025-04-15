@@ -72,7 +72,7 @@ WHERE
     OR modified_reads != sum_modified_reads;
 EOF
 )
-#echo BAD LINES ${BADLINES}
+echo BAD LINES ${BADLINES:-x}
 [[ ${BADLINES:-1} == 0 ]]
 
 #echo DONE
