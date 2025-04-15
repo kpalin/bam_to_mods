@@ -184,7 +184,7 @@ public:
     if (rev_strand) {
       std::cerr << "Sorry, can't handle reverse strand modifications"
                 << std::endl;
-      //exit(1);
+      exit(1);
     }
 
     mod_str = std::string(cm[3].str());
