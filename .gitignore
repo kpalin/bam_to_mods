@@ -12,3 +12,4 @@ src/koe.cpp
 .png.tsv.signal.png
 a.out
 bam_to_mods
+htslib-1.21/

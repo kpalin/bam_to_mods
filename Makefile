@@ -18,7 +18,7 @@ DBGDIR = debug
 DBGEXE = $(DBGDIR)/$(EXE)
 DBGOBJS = $(addprefix $(DBGDIR)/, $(OBJS))  
 DBGCFLAGS = $(DEBUG_CXXFLAGS) -g -O0 -DDEBUG  -fno-tree-vectorize  -Wextra # -fsanitize=address
-DBGLDFLAGS = $(LDFLAGS)   #-fsanitize=address 
+DBGLDFLAGS = $(LDFLAGS)  
 #
 # Release build settings
 #

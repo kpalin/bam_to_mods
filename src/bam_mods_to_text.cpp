@@ -148,11 +148,43 @@ std::string revComplement(std::string &fwd) {
   return rev.str();
 }
 struct mod_id_code {
-  int value;
-  explicit mod_id_code(int v) : value(v) {}
-  bool operator<(const mod_id_code &other) const { return value < other.value; }
+private:
+  char canonical; // Read original strand base for the modification, e.g. 'C' or
+  // 'T'
+  int value; // Modification code, e.g. 'm' or 'a' or 123 (As defined in SAM
+             // spec)
+  bool rev_strand; // Strand of the modification with respect to the original
+                   // read strand, e.g. 0 for '+' strand and 1 for '-' strand
+
+public:
+  explicit mod_id_code(char canonical_base, int modified_base, bool is_rev)
+      : canonical(canonical_base), value(modified_base), rev_strand(is_rev) {}
+  mod_id_code() : canonical(' '), value(0), rev_strand(0) {}
+
+  // Check if the modification code is undefined.
+  bool is_undef() const {
+    return (value == 0);
+  }
+  bool operator<(const mod_id_code &other) const {
+    return value < other.value ||
+           (value == other.value && canonical < other.canonical) ||
+           (value == other.value && canonical == other.canonical &&
+            rev_strand < other.rev_strand);
+  }
   bool operator==(const mod_id_code &other) const {
-    return value == other.value;
+    return value == other.value && canonical == other.canonical &&
+           rev_strand == other.rev_strand;
+  }
+  std::string str() const {
+    std::stringstream s;
+    s << canonical << (rev_strand ? '-' : '+');
+    ;
+    if (value <= 0) {
+      s << -value;
+    } else {
+      s << std::string(1, (char)value);
+    }
+    return s.str();
   }
 };
 
@@ -180,7 +212,7 @@ public:
 
   // E.g.  For methylation modification on C:s at CG context:
   // Modification("CG+m.0")
-  Modification(const char *def_str) : mod_code(0) {
+  Modification(const char *def_str) {
     this->def_str = std::string(def_str);
     // this->mod_code = (mod_id_code)std::hash<std::string>{}(this->def_str);
     std::cmatch cm;
@@ -196,37 +228,35 @@ public:
     if (rev_strand) {
       std::cerr << "Sorry, can't handle reverse strand modifications"
                 << std::endl;
-      exit(1);
+      // exit(1);
     }
 
     mod_str = std::string(cm[3].str());
     char *p;
-    mod_code = (mod_id_code)-strtol(mod_str.c_str(), &p, 10);
+    int modified_base = -strtol(mod_str.c_str(), &p, 10);
     if (*p) {
       if (mod_str.length() == 1) // require single base modification code
       {
-        mod_code = (mod_id_code)mod_str.c_str()[0];
+        modified_base = mod_str.c_str()[0];
       } else {
         std::cerr << "Couldn't parse modification type '" << mod_str << "'\n";
         exit(1);
       }
     }
-    if (rev_strand) {
-      rev_context = std::string(cm[1]);
-      fwd_context = revComplement(rev_context);
-
-    } else {
-      fwd_context = std::string(cm[1]);
-      rev_context = revComplement(fwd_context);
-    }
+    fwd_context = std::string(cm[1]);
+    rev_context = revComplement(fwd_context);
 
     // fwd_ctx_pos = atoi(cm[5].str().c_str());
     fwd_ctx_pos = strtol(cm[5].str().c_str(), &p, 10);
     rev_ctx_pos = fwd_context.length() - fwd_ctx_pos - 1;
     if (rev_strand) {
+      this->mod_code = mod_id_code(fwd_context.c_str()[0], modified_base, true);
       auto tmp = fwd_ctx_pos;
       fwd_ctx_pos = rev_ctx_pos;
       rev_ctx_pos = tmp;
+    } else {
+      this->mod_code =
+          mod_id_code(fwd_context.c_str()[0], modified_base, false);
     }
 
     assert(fwd_ctx_pos >= 0);
@@ -347,18 +377,16 @@ public:
   //     this->modified_count = c.modified_count;
   //     this->modified_expected = c.modified_expected;
   // }
-  void add_canonical(mod_id_code mod_id, int mod_is_rev = 0) {
-    canonical_count[mod_id]++;
-  }
+  void add_canonical(mod_id_code mod_id) { canonical_count[mod_id]++; }
   void add_match() { total_count++; }
-  void add_modified(mod_id_code mod_id, int mod_is_rev = 0) {
+  void add_modified(mod_id_code mod_id) {
 
     modified_count[mod_id]++;
     modified_expected[mod_id] += 1.;
   }
   /* Add expectation and count modification for give mod.
    */
-  void add_observed(mod_id_code mod_id, int mod_is_rev, double mod_expectation,
+  void add_observed(mod_id_code mod_id, double mod_expectation,
                     bool is_modified) {
 
     if (is_modified) {
@@ -374,11 +402,8 @@ std::ostream &operator<<(std::ostream &ss, _mod_count_t &obj) {
   for (std::map<mod_id_code, int>::iterator it = obj.modified_count.begin();
        it != obj.modified_count.end(); it++) {
     ss << '\t';
-    if (it->first.value <= 0)
-      ss << -it->first.value; // TODO: Should be made more object oriented
-    else
-      ss << (char)it->first.value;
-    ss << ":" << it->second << ":" << obj.canonical_count.at(it->first);
+    ss << it->first.str() << ":" << it->second << ":"
+       << obj.canonical_count.at(it->first);
   }
   return ss;
 }
@@ -433,13 +458,13 @@ private:
 public:
   ModCounter(/* args */);
   ~ModCounter();
-  void add_canonical(int pos, int read_is_rev, int ps = -1, int hp = -1,
-                     mod_id_code mod_id = (mod_id_code)0, int mod_is_rev = 0);
+  void add_canonical(int pos, int read_is_rev, int ps, int hp,
+                     char canonical_base, int mod_base = 0, int mod_is_rev = 0);
   void add_canonical_except(int pos, int read_is_rev, int ps, int hp,
-                            std::set<std::pair<mod_id_code, int>> mods_id_rev);
+                            std::set<mod_id_code> mods_id_rev);
   void add_modified(int pos, int read_is_rev, int ps, int hp,
-                    mod_id_code mod_id, int const mod_is_rev = 0,
-                    double mod_expect = 1., bool is_modified = true);
+                    mod_id_code mod_id, double mod_expect = 1.,
+                    bool is_modified = true);
 
   void add_other(int pos, int read_is_rev, int ps = -1, int hp = -1);
   void add_match(int pos, int read_is_rev, int ps = -1, int hp = -1) {
@@ -485,8 +510,10 @@ public:
       //           << " ... " << mod_count_store[it->first] << '\n';
       assert(mod_count_store.at(it->first) == it->second);
       assert(mod_count_store.find(it->first)->first == it->first);
+#ifndef NDEBUG
       std::map<mod_key, _mod_count_t>::iterator fit =
           mod_count_store.lower_bound(it->first);
+#endif
       assert(fit == it);
       assert(fit->first == it->first);
       assert(fit->second == it->second);
@@ -532,12 +559,7 @@ void ModCounter::erase_upto(int upto) {
 std::string mod_count_to_str(mod_id_code mod_code, int mod_count,
                              int called_sites) {
   std::stringstream ss;
-  if (mod_code.value <= 0) {
-    ss << -mod_code.value;
-  } else {
-    ss << (char)mod_code.value;
-  }
-  ss << '\t' << mod_count;
+  ss << mod_code.str() << '\t' << mod_count;
   double mod_freq = (double)mod_count / (double)called_sites;
   ss << '\t' << mod_freq;
   return ss.str();
@@ -660,34 +682,37 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos,
     return out_stream.str();
   }
 }
-/* Add count of canonical base for all modifications or single one */
+/* Add count of canonical base for all modifications (if no mod_base given) or single one modification */
 void ModCounter::add_canonical(int pos, int read_is_rev, int ps, int hp,
-                               mod_id_code mod_id, int mod_is_rev) {
+                               char canonical_base, int mod_base,
+                               int mod_is_rev) {
   mod_key k(pos, read_is_rev, ps, hp);
+  mod_id_code mod_id(canonical_base, mod_base, mod_is_rev);
   auto &mod_cnts = mod_count_store[k];
 
-  if (mod_id.value == 0) {
+  
+  if (mod_id.is_undef()) {
     for (std::map<mod_id_code, int>::iterator it =
              mod_cnts.canonical_count.begin();
          it != mod_cnts.canonical_count.end(); it++) {
       mod_cnts.add_canonical(it->first);
     }
   } else {
-    mod_cnts.add_canonical(mod_id, mod_is_rev);
+    mod_cnts.add_canonical(mod_id);
   }
 }
 
 /* Add count of canonical bases EXCEPT the listed */
 void ModCounter::add_canonical_except(
     int pos, int read_is_rev, int ps, int hp,
-    std::set<std::pair<mod_id_code, int>> mods_id_rev) {
+    std::set<mod_id_code> mods_id_exceptions) {
   mod_key k(pos, read_is_rev, ps, hp);
   auto &mod_cnts = mod_count_store[k];
 
   for (std::map<mod_id_code, int>::iterator it =
            mod_cnts.canonical_count.begin();
        it != mod_cnts.canonical_count.end(); it++) {
-    if (mods_id_rev.count(std::make_pair(it->first, 0)) == 0) {
+    if (mods_id_exceptions.count(it->first) == 0) {
       mod_cnts.add_canonical(it->first);
     }
   }
@@ -699,11 +724,11 @@ void ModCounter::add_other(int pos, int read_is_rev, int ps, int hp) {
 }
 
 void ModCounter::add_modified(int pos, int read_is_rev, int ps, int hp,
-                              mod_id_code mod_id, int const mod_is_rev,
-                              double mod_expect, bool is_modified) {
+                              mod_id_code mod_id, double mod_expect,
+                              bool is_modified) {
   // assert(mod_is_rev == 0);
   mod_key k(pos, read_is_rev, ps, hp);
-  mod_count_store[k].add_observed(mod_id, mod_is_rev, mod_expect, is_modified);
+  mod_count_store[k].add_observed(mod_id, mod_expect, is_modified);
 }
 
 // Report a line of pileup, including base modifications inline with
@@ -746,29 +771,28 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p, int tid, int pos,
       int nm;
       if ((nm = bam_mods_at_qpos(p->b, p->qpos, m, mod, MAX_MOD_COUNT)) > 0) {
         int j;
-        std::set<std::pair<mod_id_code, int>> found_mods;
+        std::set<mod_id_code> found_mods;
         for (j = 0; j < nm && j < MAX_MOD_COUNT; j++) {
-          found_mods.insert(
-              std::make_pair((mod_id_code)mod[j].modified_base, mod[j].strand));
+          mod_id_code mod_id(mod[j].canonical_base, mod[j].modified_base,
+                             mod[j].strand);
+          found_mods.insert(mod_id);
           if (mod[j].qual <= max_mod_prob) {
-            // TODO: Add context information to handle same modification in
-            // different contexts
+            // TODO: Why does add_canonical() need the modification info.
             mod_counter.add_canonical(pos, read_is_rev, ps, hp,
-                                      (mod_id_code)mod[j].modified_base,
-                                      mod[j].strand);
+                                      mod[j].canonical_base,
+                                      mod[j].modified_base, mod[j].strand);
           } else {
             bool is_modified = (mod[j].qual >= min_mod_prob);
             double modified_expected = mod[j].qual / 255.;
             // TODO: Add context information to handle same modification in
             // different contexts
-            mod_counter.add_modified(
-                pos, read_is_rev, ps, hp, (mod_id_code)mod[j].modified_base,
-                mod[j].strand, modified_expected, is_modified);
+            mod_counter.add_modified(pos, read_is_rev, ps, hp, mod_id,
+                                     modified_expected, is_modified);
           }
         }
         mod_counter.add_canonical_except(pos, read_is_rev, ps, hp, found_mods);
       } else { // There is no modifications called at this locus
-        mod_counter.add_canonical(pos, read_is_rev, ps, hp);
+        mod_counter.add_canonical(pos, read_is_rev, ps, hp, ref_base);
       }
     }
   }
@@ -810,26 +834,12 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id,
   ss << called_sites << '\t' << cnts.total_count - called_sites << '\t'
      << cnts.other_count << '\t';
 
-  assert(out_mod.mod_code.value != 0);
-  if (out_mod.mod_code.value == 0) {
-    assert(false);
-    for (std::map<mod_id_code, int>::iterator it = cnts.modified_count.begin();
-         it != cnts.modified_count.end(); it++)
+  out_stream << ss.str();
 
-    {
-      out_stream << ss.str();
-
-      // out_stream << mod_count_to_str(it->first, it->second, called_sites)
-      //            << '\n';
-    }
-  } else {
-    out_stream << ss.str();
-
-    out_stream << mod_count_to_str(out_mod.mod_code,
-                                   cnts.modified_count[out_mod.mod_code],
-                                   called_sites)
-               << '\t' << out_mod.def_str;
-  }
+  out_stream << mod_count_to_str(out_mod.mod_code,
+                                 cnts.modified_count[out_mod.mod_code],
+                                 called_sites)
+             << '\t' << out_mod.def_str;
 
   return out_stream << '\n';
 }
