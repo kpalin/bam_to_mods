@@ -162,9 +162,7 @@ public:
   mod_id_code() : canonical(' '), value(0), rev_strand(0) {}
 
   // Check if the modification code is undefined.
-  bool is_undef() const {
-    return (value == 0);
-  }
+  bool is_undef() const { return (value == 0); }
   bool operator<(const mod_id_code &other) const {
     return value < other.value ||
            (value == other.value && canonical < other.canonical) ||
@@ -250,13 +248,10 @@ public:
     fwd_ctx_pos = strtol(cm[5].str().c_str(), &p, 10);
     rev_ctx_pos = fwd_context.length() - fwd_ctx_pos - 1;
     if (rev_strand) {
-      this->mod_code = mod_id_code(fwd_context.c_str()[0], modified_base, true);
+
       auto tmp = fwd_ctx_pos;
       fwd_ctx_pos = rev_ctx_pos;
       rev_ctx_pos = tmp;
-    } else {
-      this->mod_code =
-          mod_id_code(fwd_context.c_str()[0], modified_base, false);
     }
 
     assert(fwd_ctx_pos >= 0);
@@ -265,6 +260,9 @@ public:
     canonical = fwd_context[fwd_ctx_pos];
 
     assert(canonical == complement(rev_context[rev_ctx_pos]));
+    
+    this->mod_code =
+        mod_id_code(canonical, modified_base, this->rev_strand != 0);
 
     missing_is_unmodified = (cm[4].str()[0] == '.');
 
@@ -682,7 +680,8 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos,
     return out_stream.str();
   }
 }
-/* Add count of canonical base for all modifications (if no mod_base given) or single one modification */
+/* Add count of canonical base for all modifications (if no mod_base given) or
+ * single one modification */
 void ModCounter::add_canonical(int pos, int read_is_rev, int ps, int hp,
                                char canonical_base, int mod_base,
                                int mod_is_rev) {
@@ -690,7 +689,6 @@ void ModCounter::add_canonical(int pos, int read_is_rev, int ps, int hp,
   mod_id_code mod_id(canonical_base, mod_base, mod_is_rev);
   auto &mod_cnts = mod_count_store[k];
 
-  
   if (mod_id.is_undef()) {
     for (std::map<mod_id_code, int>::iterator it =
              mod_cnts.canonical_count.begin();
@@ -762,7 +760,8 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p, int tid, int pos,
     }
 
     if (p->is_del || q_base != ref_base) {
-      mod_counter.add_other(pos, read_is_rev, ps, hp);
+      mod_counter.add_other(pos, read_is_rev, ps,
+                            hp); // Read vs reference base mismatch
     } else {
       mod_counter.add_match(pos, read_is_rev, ps, hp);
       hts_base_mod_state *m = (hts_base_mod_state *)p->cd.p;
@@ -773,6 +772,9 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p, int tid, int pos,
         int j;
         std::set<mod_id_code> found_mods;
         for (j = 0; j < nm && j < MAX_MOD_COUNT; j++) {
+          assert(
+              (!read_is_rev && mod[j].canonical_base == ref_base) ||
+              (read_is_rev && mod[j].canonical_base == complement(ref_base)));
           mod_id_code mod_id(mod[j].canonical_base, mod[j].modified_base,
                              mod[j].strand);
           found_mods.insert(mod_id);

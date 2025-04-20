@@ -12,8 +12,8 @@
             "request": "launch",
             "program": "${workspaceFolder}/debug/bam_to_mods",
             "args": [
-                "debug/bam_to_mods",//"-m", "GC+m.1", "-m", "CG+m.0","-i", "data/fibreseq_demo_pacbio.bam" ,"-r","data/ref.fa.gz","-R","chr20:46138245-46150899"
-                "--split_strand","-m", "T-a.0", "-i", "data/fibreseq_demo_pacbio.bam" ,"-r","data/ref.fa.gz","-R","chr20:46138245-46150899"
+                "debug/bam_to_mods","--split_strand","-m", "GC+m.1", "-m", "CG+m.0","-i", "data/fibreseq_demo_pacbio.bam" ,"-r","data/ref.fa.gz","-R","chr20:46138245-46150899"
+                //"--split_strand","-m", "T-a.0", "-i", "data/fibreseq_demo_pacbio.bam" ,"-r","data/ref.fa.gz","-R","chr20:46138245-46150899"
                
             ],
             "stopAtEntry": false,
