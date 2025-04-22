@@ -30,11 +30,11 @@ setup() {
 #     # Covered 963 sites.
 # }
 
-@test "can run A+a.0 fibreseq pacbio" {
+@test "can run A+a.0 split_strand fibreseq pacbio" {
     ./debug/bam_to_mods --split_strand -m A+a.0 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899
 }
 
-@test "can run T-a.0 fibreseq pacbio" {
+@test "can run T-a.0 split_strand fibreseq pacbio" {
     ./debug/bam_to_mods --split_strand -m T-a.0 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899
 }
 

@@ -45,6 +45,7 @@ DEALINGS IN THE SOFTWARE.  */
 
 static int header_flag = 1;
 static int split_strand_flag = 0;
+static bool combine_hemi = true; // Combine hemi-methylation
 
 static int phase_flag = 1;
 static int min_mod_prob = 209; // Ln odds 1.5  >81%
@@ -161,18 +162,20 @@ public:
       : canonical(canonical_base), value(modified_base), rev_strand(is_rev) {}
   mod_id_code() : canonical(' '), value(0), rev_strand(0) {}
 
+  // Get this modification as forward strand mod, i.e. A+a as A+a and T-a as A+a
+  mod_id_code get_plus() {
+    if (this->rev_strand) {
+      return mod_id_code(complement(canonical), value, false);
+    } else {
+      return *this;
+    }
+  }
+  const bool is_plus() { return !this->rev_strand; }
+
   // Check if the modification code is undefined.
   bool is_undef() const { return (value == 0); }
-  bool operator<(const mod_id_code &other) const {
-    return value < other.value ||
-           (value == other.value && canonical < other.canonical) ||
-           (value == other.value && canonical == other.canonical &&
-            rev_strand < other.rev_strand);
-  }
-  bool operator==(const mod_id_code &other) const {
-    return value == other.value && canonical == other.canonical &&
-           rev_strand == other.rev_strand;
-  }
+
+  // Get string representation
   std::string str() const {
     std::stringstream s;
     s << canonical << (rev_strand ? '-' : '+');
@@ -183,6 +186,18 @@ public:
       s << std::string(1, (char)value);
     }
     return s.str();
+  }
+
+  // Needed for comparisons
+  bool operator<(const mod_id_code &other) const {
+    return value < other.value ||
+           (value == other.value && canonical < other.canonical) ||
+           (value == other.value && canonical == other.canonical &&
+            rev_strand < other.rev_strand);
+  }
+  bool operator==(const mod_id_code &other) const {
+    return value == other.value && canonical == other.canonical &&
+           rev_strand == other.rev_strand;
   }
 };
 
@@ -223,11 +238,11 @@ public:
     };
 
     rev_strand = (cm[2].str()[0] == '-');
-    if (rev_strand) {
-      std::cerr << "Sorry, can't handle reverse strand modifications"
-                << std::endl;
-      // exit(1);
-    }
+    // if (rev_strand) {
+    //   std::cerr << "Sorry, can't handle reverse strand modifications"
+    //             << std::endl;
+    //   // exit(1);
+    // }
 
     mod_str = std::string(cm[3].str());
     char *p;
@@ -260,7 +275,7 @@ public:
     canonical = fwd_context[fwd_ctx_pos];
 
     assert(canonical == complement(rev_context[rev_ctx_pos]));
-    
+
     this->mod_code =
         mod_id_code(canonical, modified_base, this->rev_strand != 0);
 
@@ -290,6 +305,22 @@ public:
 
 std::vector<Modification> modifications;
 
+// Generic stream operator for any map
+template <typename V>
+std::ostream &operator<<(std::ostream &os, const std::map<mod_id_code, V> &m) {
+  os << "{";
+  bool first = true;
+  for (typename std::map<mod_id_code, V>::const_iterator it = m.begin();
+       it != m.end(); ++it) {
+    if (!first)
+      os << ", ";
+    os << it->first.str() << ": " << it->second;
+    first = false;
+  }
+  os << "}";
+  return os;
+}
+
 class _mod_count_t {
 public:
   int total_count; // Total, excluding "other", i.e. canonical +
@@ -300,6 +331,15 @@ public:
   std::map<mod_id_code, int> modified_count;
   std::map<mod_id_code, int> canonical_count;
   std::map<mod_id_code, double> modified_expected;
+  // Overload the stream insertion operator
+  friend std::ostream &operator<<(std::ostream &os, const _mod_count_t &p) {
+    return os << "total_count:" << p.total_count
+              << ", other_count: " << p.other_count
+              << "\nmodified_count:" << p.modified_count
+              << "\ncanonical_count:" << p.canonical_count
+              << "\nmodified_expected:" << p.modified_expected << '\n';
+  }
+
   _mod_count_t() {
     other_count = 0;
     total_count = 0;
@@ -378,7 +418,7 @@ public:
   void add_canonical(mod_id_code mod_id) { canonical_count[mod_id]++; }
   void add_match() { total_count++; }
   void add_modified(mod_id_code mod_id) {
-
+    assert((!combine_hemi) || mod_id.is_plus());
     modified_count[mod_id]++;
     modified_expected[mod_id] += 1.;
   }
@@ -469,7 +509,12 @@ public:
     mod_key k(pos, read_is_rev, ps, hp);
     mod_count_store[k].add_match();
   }
-
+  // For debugging only
+  _mod_count_t return_inner(int pos, int read_is_rev, int ps = -1,
+                            int hp = -1) {
+    mod_key k(pos, read_is_rev, ps, hp);
+    return mod_count_store[k];
+  }
   std::map<mod_key, _mod_count_t>::iterator begin() {
     return mod_count_store.begin();
   }
@@ -729,15 +774,34 @@ void ModCounter::add_modified(int pos, int read_is_rev, int ps, int hp,
   mod_count_store[k].add_observed(mod_id, mod_expect, is_modified);
 }
 
-// Report a line of pileup, including base modifications inline with
-// the sequence (including qualities), as [<strand><dir><qual>...]
+void output_mod_counter(int &pos) {
+
+  for (int read_is_rev : {0, 1}) {
+    for (int hp : {1, 2}) {
+      int PS = 45553715;
+      std::cout << '\n'
+                << pos << ":isRev" << read_is_rev << ":PS" << PS << ":haplo"
+                << hp << '\n'
+                << mod_counter.return_inner(pos, read_is_rev, PS, hp);
+    }
+  }
+}
+
+#define MAX_MOD_COUNT 10
+/* Report a line of pileup, including base modifications inline with
+ the sequence (including qualities), as [<strand><dir><qual>...]
+
+ Counting here the modifications per nucleotide, strand and modification (like
+ 'm' or 'a'). This does not involve with sequence context or anything else.
+
+ Filtering is by min_baseq.
+ */
+
 void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p, int tid, int pos,
                          int n, char ref_base) {
 
   int i;
 
-  //    if (pos == 170012 - 1)
-  //        std::cerr << n << " reads." << std::endl;
   for (i = 0; i < n; i++, p++) {
     uint8_t *seq = bam_get_seq(p->b);
     uint8_t *qual = bam_get_qual(p->b);
@@ -765,39 +829,49 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p, int tid, int pos,
     } else {
       mod_counter.add_match(pos, read_is_rev, ps, hp);
       hts_base_mod_state *m = (hts_base_mod_state *)p->cd.p;
-#define MAX_MOD_COUNT 10
+
       hts_base_mod mod[MAX_MOD_COUNT];
       int nm;
       if ((nm = bam_mods_at_qpos(p->b, p->qpos, m, mod, MAX_MOD_COUNT)) > 0) {
         int j;
         std::set<mod_id_code> found_mods;
         for (j = 0; j < nm && j < MAX_MOD_COUNT; j++) {
+
           assert(
               (!read_is_rev && mod[j].canonical_base == ref_base) ||
               (read_is_rev && mod[j].canonical_base == complement(ref_base)));
           mod_id_code mod_id(mod[j].canonical_base, mod[j].modified_base,
                              mod[j].strand);
+          if (combine_hemi) { // If combine hemimethylated calls, i.e. count
+                              // A+a and T-a as one
+            mod_id = mod_id.get_plus();
+          }
+          assert(!mod_id.is_undef());
+          assert((!combine_hemi) || mod_id.is_plus());
           found_mods.insert(mod_id);
+
           if (mod[j].qual <= max_mod_prob) {
-            // TODO: Why does add_canonical() need the modification info.
+            // Canonical with respect to this modification.
             mod_counter.add_canonical(pos, read_is_rev, ps, hp,
                                       mod[j].canonical_base,
                                       mod[j].modified_base, mod[j].strand);
           } else {
             bool is_modified = (mod[j].qual >= min_mod_prob);
             double modified_expected = mod[j].qual / 255.;
-            // TODO: Add context information to handle same modification in
-            // different contexts
             mod_counter.add_modified(pos, read_is_rev, ps, hp, mod_id,
                                      modified_expected, is_modified);
           }
         }
         mod_counter.add_canonical_except(pos, read_is_rev, ps, hp, found_mods);
-      } else { // There is no modifications called at this locus
+      } else {
+        // There is no modifications called at this locus. Canonical with
+        // respect to all modifications.
         mod_counter.add_canonical(pos, read_is_rev, ps, hp, ref_base);
       }
     }
   }
+  if (pos== 46138257)
+    output_mod_counter(pos);
 }
 
 std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id,
@@ -860,6 +934,7 @@ int parse_options(int argc, char **argv) {
       {"no_header", no_argument, &header_flag, 0},
       {"no_phase", no_argument, &phase_flag, 0},
       {"split_strand", no_argument, &split_strand_flag, 1},
+      {"no_combine_mod_strands", no_argument, (int *)&combine_hemi, 0},
       /* These options don’t set a flag.
          We distinguish them by their indices. */
       {"reference_fasta", required_argument, 0, 'r'},
@@ -991,7 +1066,8 @@ int main(int argc, char **argv) {
 
       fprintf(stderr,
               "usage: %s [-c %d] [-C %d]  [-b %d]  [-q %d] [-E %d] [-m CG+m.0] "
-              "[-R chr1:1-100] [--no_header] [--no_phase] [--split_strand] -r "
+              "[-R chr1:1-100] [--no_header] [--no_phase] [--split_strand] "
+              "[--no_combine_mod_strands] -r "
               "ref.fasta -i input.cram\n\n"
               " -c|--min_mod_prob Minimum probability of modification called "
               "modified (range 0-255)\n"
@@ -1012,6 +1088,8 @@ int main(int argc, char **argv) {
               "given multiple times. If none given, 'CG+m.0' is used.\n"
               " --split_strand    Report modifications on either strand "
               "separately.\n"
+              " --no_combine_mod_strands  Don't count hemimethylated loci. "
+              "i.e. Count e.g. A+a and T-a as sparate.\n"
               " --no_header       Don't output header text.\n"
               " --no_phase        Don't use HP and PS tags to separate phased "
               "reads.\n"
@@ -1042,6 +1120,11 @@ int main(int argc, char **argv) {
             "having %s.\n",
             HTS_VERSION, hts_version());
     exit(2);
+  }
+
+  if(split_strand_flag) {
+    std::cerr<<"Reporting modifications by read alignment strand. Reporting only exact strand mods, i.e. A+a and T-a are not merged.\n";
+    combine_hemi=false;
   }
 
   // First argument: reference genome
@@ -1208,7 +1291,8 @@ int main(int argc, char **argv) {
                    (m_rev == 0 || m_fwd == 0)) {
           std::cout << mod_counter.output_mod_joinstrand(
               ref_seq_name, pos, *cmod,
-              (m_fwd == 0 ? STRAND_FORWARD : STRAND_REVERSE));
+              (combine_hemi ? STRAND_BOTH
+                            : (m_fwd == 0 ? STRAND_FORWARD : STRAND_REVERSE)));
         }
       }
     }
