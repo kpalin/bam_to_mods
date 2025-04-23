@@ -640,13 +640,32 @@ std::string ModCounter::output_mod_joinstrand(char const *chrom, int pos,
   // pair<phase_set,haplotype> -> _mod_count_t
   std::map<std::pair<int, int>, _mod_count_t> cnts;
 
-  // Sum the modifications over both read alignment strands
-  for (std::map<mod_key, _mod_count_t>::iterator it = this->from(fwd_pos, 0);
-       it != this->to(fwd_pos); it++) {
+  if (fwd_pos == rev_pos) {
+    // Sum the modifications over both read alignment strands
 
-    cnts[std::pair<int, int>(it->first.ps, it->first.hp)] =
-        cnts[std::pair<int, int>(it->first.ps, it->first.hp)] + it->second;
+    for (std::map<mod_key, _mod_count_t>::iterator it = this->from(fwd_pos);
+         it != this->to(fwd_pos); it++) {
+
+      cnts[std::pair<int, int>(it->first.ps, it->first.hp)] =
+          cnts[std::pair<int, int>(it->first.ps, it->first.hp)] + it->second;
+    }
+  } else {
+
+    // If the motif has an other modification location in one of the reference
+    // strands, sum those in correct strands
+    int first_pos = (fwd_pos < rev_pos ? fwd_pos : rev_pos);
+    int last_pos = (fwd_pos > rev_pos ? fwd_pos : rev_pos);
+
+    for (std::map<mod_key, _mod_count_t>::iterator it = this->from(first_pos);
+         it != this->to(last_pos); it++) {
+      if ((it->first.read_isrev == 0 && it->first.pos == fwd_pos) ||
+          (it->first.read_isrev == 1 && it->first.pos == rev_pos)) {
+        cnts[std::pair<int, int>(it->first.ps, it->first.hp)] =
+            cnts[std::pair<int, int>(it->first.ps, it->first.hp)] + it->second;
+      }
+    }
   }
+
   // if (which_strand == STRAND_FORWARD || which_strand == STRAND_BOTH) {
   //   // std::cerr << "pos : " << pos << " +" << fwd_pos << " -" << rev_pos <<
   //   // '\n';

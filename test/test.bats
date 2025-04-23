@@ -26,8 +26,6 @@ setup() {
 }
 
 @test "T-a and A+a read depth about match" {
-
-    RET=$(duckdb <${DIR}/check_read_depths.sql)
     duckdb <${DIR}/check_read_depths.sql >${DIR}/tmp/T_depth.out
     diff ${DIR}/check_read_depths.expected ${DIR}/tmp/T_depth.out
 
