@@ -897,7 +897,11 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id,
                          Modification &out_mod) {
   // std::cout << mod_id << 'x' << cnts << '\n';
 
-  const int called_sites = cnts.get_called_count(out_mod.mod_code);
+  const mod_id_code count_code= (combine_hemi?out_mod.mod_code.get_plus():out_mod.mod_code);
+
+  const int called_sites = cnts.get_called_count(count_code);
+  const int modified_sites = cnts.get_modified_count(count_code);
+
   assert(called_sites <= cnts.total_count);
   std::stringstream ss;
   if (header_flag) {
@@ -923,14 +927,14 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id,
   } else {
     ss << "N\t" << mod_id.ps << '\t';
   }
-
-  ss << called_sites << '\t' << cnts.total_count - called_sites << '\t'
+  const int uncalled_sites = cnts.get_uncalled_count(count_code);
+  ss << called_sites << '\t' << uncalled_sites << '\t'
      << cnts.other_count << '\t';
 
   out_stream << ss.str();
-
+  
   out_stream << mod_count_to_str(out_mod.mod_code,
-                                 cnts.modified_count[out_mod.mod_code],
+                                 modified_sites,
                                  called_sites)
              << '\t' << out_mod.def_str;
 

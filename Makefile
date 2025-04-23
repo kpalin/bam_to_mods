@@ -27,7 +27,7 @@ RELEXE = $(RELDIR)/$(EXE)
 RELOBJS = $(addprefix $(RELDIR)/, $(OBJS))
 RELCFLAGS = $(CXXFLAGS) -O3 -DNDEBUG
 
-.PHONY: all clean debug prep release remake
+.PHONY: all clean debug prep release remake test testall
 
 # Testing
 BATS=./test/bats/bin/bats
@@ -39,7 +39,8 @@ all: prep release debug
 test: $(DBGEXE) $(TESTS)
 	$(BATS) $(TESTS)
 
-
+testall: $(DBGEXE)
+	$(BATS) test/
 
 #
 # Debug rules
