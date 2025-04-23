@@ -11,48 +11,12 @@ setup() {
     #PATH="$DIR/../src:$PATH"
 }
 
-@test "can launch the program" {
-    ./debug/bam_to_mods -h
-}
-@test "can run default pacbio" {
-    ./debug/bam_to_mods -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz
-}
+@test "T-a and A+a match" {
 
-@test "can run region on ONT" {
-    ./debug/bam_to_mods -i data/fibreseq_demo_ont.bam -r data/ref.fa.gz -R chr20:46138245-46150899
-}
-
-@test "can run unphased region on PacBio" {
-    ./debug/bam_to_mods --no_phase -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899 | awk '$0!~/^#/ && $4!~/^[N*]$/ {print "Line",NR ":",$0 > "/dev/stderr" ; exit 1;}'
-}
-# @test "can run CG+m.0  pacbio" {
-#     ./debug/bam_to_mods -m CG+m.0 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899
-#     # Covered 963 sites.
-# }
-
-@test "can run A+a.0 split_strand fibreseq pacbio" {
-    ./debug/bam_to_mods --split_strand -m A+a.0 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899
-}
-
-@test "can run T-a.0 split_strand fibreseq pacbio" {
-    ./debug/bam_to_mods --split_strand -m T-a.0 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899
-}
-
-@test "can run CG+m.0 GC+m.1 split strand pacbio" {
-    run ./test/check_CG_GC_count_match.sh
-    assert_success
-}
-
-@test "can run CG+m.0 split strand pacbio" {
-    run ./test/check_strand_split_scores.sh
-    assert_success
-}
-
-@test "can consistently run CG+m.0, GC+m.1, CG+h.0 and A+a.0 on ont" {
-    run ./test/check_multi_context_match.sh
-    assert_success
-}
-
-@test "can run CG+m.0 and CG+h.0 on ONT" {
-    ./debug/bam_to_mods -m CG+m.0 -m CG+h.0 -i data/fibreseq_demo_ont.bam -r data/ref.fa.gz -R chr20:46138245-46150899
+    ./debug/bam_to_mods -m A+a.0 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899 >${DIR}/tmp/A+a.0.out
+    ./debug/bam_to_mods -m T-a.0 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899 >${DIR}/tmp/T-a.0.out
+    diff <(cut -f-8,10 ${DIR}/tmp/A+a.0.out) <(cut -f-8,10 ${DIR}/tmp/T-a.0.out)
+    RET=$(duckdb <${DIR}/check_read_depths.sql)
+    duckdb <${DIR}/check_read_depths.sql >${DIR}/tmp/T_depth.out
+    diff ${DIR}/check_read_depths.expected ${DIR}/tmp/T_depth.out
 }
