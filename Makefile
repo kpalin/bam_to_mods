@@ -31,7 +31,7 @@ RELCFLAGS = $(CXXFLAGS) -O3 -DNDEBUG
 
 # Testing
 BATS=./test/bats/bin/bats
-TESTS=test/test.bats
+TESTS=test/basics.bats
 
 # Default build
 all: prep release debug

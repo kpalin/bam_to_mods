@@ -98,6 +98,7 @@ static int readaln(void *data, bam1_t *b) {
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
+
 // Initialise and destroy the base modifier state data. This is called
 // as each new read is added or removed from the pileups.
 int pileup_cd_create(void *data, const bam1_t *b, bam_pileup_cd *cd) {
@@ -193,6 +194,8 @@ public:
     return s.str();
   }
 
+
+
   // Needed for comparisons
   bool operator<(const mod_id_code &other) const {
     return value < other.value ||
@@ -205,6 +208,10 @@ public:
            rev_strand == other.rev_strand;
   }
 };
+
+// All mods found in the scanned area
+std::set<mod_id_code> found_mods;
+
 
 class Modification {
 public:
@@ -522,7 +529,7 @@ public:
   _mod_count_t return_inner(int pos, int read_is_rev, int ps = -1,
                             int hp = -1) {
     mod_key k(pos, read_is_rev, ps, hp);
-    return mod_count_store[k];
+    return mod_count_store.at(k);
   }
   std::map<mod_key, _mod_count_t>::iterator begin() {
     return mod_count_store.begin();
@@ -855,7 +862,7 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p, int tid, int pos,
       int nm;
       if ((nm = bam_mods_at_qpos(p->b, p->qpos, m, mod, MAX_MOD_COUNT)) > 0) {
         int j;
-        std::set<mod_id_code> found_mods;
+        
         for (j = 0; j < nm && j < MAX_MOD_COUNT; j++) {
 
           assert(
@@ -863,13 +870,14 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p, int tid, int pos,
               (read_is_rev && mod[j].canonical_base == complement(ref_base)));
           mod_id_code mod_id(mod[j].canonical_base, mod[j].modified_base,
                              mod[j].strand);
+
+          found_mods.insert(mod_id);
           if (combine_hemi) { // If combine hemimethylated calls, i.e. count
                               // A+a and T-a as one
             mod_id = mod_id.get_plus();
           }
           assert(!mod_id.is_undef());
           assert((!combine_hemi) || mod_id.is_plus());
-          found_mods.insert(mod_id);
 
           if ((mod[j].qual > max_mod_prob)) {
             if (mod[j].qual < min_mod_prob) {
@@ -882,14 +890,12 @@ void process_mod_pileup0(sam_hdr_t *h, const bam_pileup1_t *p, int tid, int pos,
                                        modified_expected);
             }
           }
-          // mod_counter.add_canonical_except(pos, read_is_rev, ps, hp,
-          //                                 found_mods);
         }
       }
     }
   }
-  if (pos == 46138257)
-    output_mod_counter(pos);
+  // if (pos == 46138257)
+  //   output_mod_counter(pos);
 }
 
 std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id,
@@ -897,7 +903,8 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id,
                          Modification &out_mod) {
   // std::cout << mod_id << 'x' << cnts << '\n';
 
-  const mod_id_code count_code= (combine_hemi?out_mod.mod_code.get_plus():out_mod.mod_code);
+  const mod_id_code count_code =
+      (combine_hemi ? out_mod.mod_code.get_plus() : out_mod.mod_code);
 
   const int called_sites = cnts.get_called_count(count_code);
   const int modified_sites = cnts.get_modified_count(count_code);
@@ -928,14 +935,12 @@ std::ostream &output_mod(std::ostream &out_stream, const mod_key &mod_id,
     ss << "N\t" << mod_id.ps << '\t';
   }
   const int uncalled_sites = cnts.get_uncalled_count(count_code);
-  ss << called_sites << '\t' << uncalled_sites << '\t'
-     << cnts.other_count << '\t';
+  ss << called_sites << '\t' << uncalled_sites << '\t' << cnts.other_count
+     << '\t';
 
   out_stream << ss.str();
-  
-  out_stream << mod_count_to_str(out_mod.mod_code,
-                                 modified_sites,
-                                 called_sites)
+
+  out_stream << mod_count_to_str(out_mod.mod_code, modified_sites, called_sites)
              << '\t' << out_mod.def_str;
 
   return out_stream << '\n';
@@ -1332,7 +1337,12 @@ int main(int argc, char **argv) {
   bam_destroy1(b);
   sam_hdr_destroy(h);
   free(ref_fai);
-  std::cerr << "Covered " << motif_sites_covered << " sites." << std::endl;
+  std::cerr << "Covered " << motif_sites_covered << " sites.\nEncountered modifications:";
+
+  for(const mod_id_code &mod_id : found_mods){
+    std::cerr << ' ' << mod_id.str();
+  }
+  std::cerr<<std::endl;
   // Fail if no motifs covered.
   return (motif_sites_covered > 0 ? 0 : 1);
 }

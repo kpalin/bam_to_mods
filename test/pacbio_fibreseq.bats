@@ -11,12 +11,12 @@ setup() {
     #PATH="$DIR/../src:$PATH"
 }
 
-@test "Running -m T-a " {
+@test "Running -m T-a pacbio" {
     ./debug/bam_to_mods -m T-a.0 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899 >${DIR}/tmp/T-a.0.out
 
 }
 
-@test "Running -m A+a " {
+@test "Running -m A+a pacbio" {
     ./debug/bam_to_mods -m A+a.0 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899 >${DIR}/tmp/A+a.0.out
 
 }
@@ -25,13 +25,13 @@ setup() {
     diff <(cut -f-8,10 ${DIR}/tmp/A+a.0.out) <(cut -f-8,10 ${DIR}/tmp/T-a.0.out)
 }
 
-@test "T-a and A+a read depth about match" {
+@test "T-a and A+a pacbio read depth about match" {
     duckdb <${DIR}/check_read_depths.sql >${DIR}/tmp/T_depth.out
     diff ${DIR}/check_read_depths.expected ${DIR}/tmp/T_depth.out
 
 }
 
-@test "Running -m A+a -m T-a and they match individually " {
+@test "Running pacbio -m A+a -m T-a and they match individual runs" {
 
     ./debug/bam_to_mods -m A+a.0 -m T-a.0 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899 | sort -u >${DIR}/tmp/AT+-a.0.out
 
