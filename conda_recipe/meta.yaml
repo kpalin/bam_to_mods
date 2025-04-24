@@ -16,6 +16,7 @@ build:
 requirements:
   host:
     - htslib >=1.16
+    - zlib
   build:
     - {{ compiler('cxx') }}
     - make

@@ -10,7 +10,7 @@ CFLAGS += -Wall
 SRCS = bam_mods_to_text.cpp
 OBJS = $(SRCS:.cpp=.o)
 EXE  = bam_to_mods
-LIBS :=   -lhts -lbz2 -lhts -lm -lpthread -lz -llzma -lpthread
+LIBS :=   -lhts -lbz2 -lhts -lz -lm   -lpthread
 #
 # Debug build settings
 #
