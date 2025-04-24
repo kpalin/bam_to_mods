@@ -22,13 +22,13 @@ trap _cleanup EXIT
 ./debug/bam_to_mods --split_strand -m CG+m.0 -m GC+m.1 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899 >${TEMPDIR}/tmp_strand.out
 
 BADLINES=$(
-    duckdb <<"EOF"
+    duckdb <<EOF
 
 create table withsplit as
 select
     *
 from
-    read_csv('tmp_strand.out');
+    read_csv('${TEMPDIR}/tmp_strand.out');
 
 .mode tabs
 .header off

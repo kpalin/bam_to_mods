@@ -1,0 +1,2 @@
+samtools view -u -d HP:2 data/fibreseq_demo_pacbio.bam | samtools depth -J --min-BQ 7 --min-MQ 20 -b T.bed  - |bgzip >data/fibreseq_demo_pacbio_hp2.depth.gz 
+samtools view -u -d HP:1 data/fibreseq_demo_pacbio.bam | samtools depth -J --min-BQ 7 --min-MQ 20 -b T.bed  - |bgzip >data/fibreseq_demo_pacbio_hp1.depth.gz 

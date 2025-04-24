@@ -23,18 +23,18 @@ trap _cleanup EXIT
 ./debug/bam_to_mods -m CG+m.0 -i data/fibreseq_demo_pacbio.bam -r data/ref.fa.gz -R chr20:46138245-46150899 >${TEMPDIR}/tmp.out
 
 BADLINES=$(
-    duckdb <<"EOF"
+    duckdb <<EOF
 create table nosplit as
 select
     *
 from
-    read_csv('tmp.out');
+    read_csv('${TEMPDIR}/tmp.out');
 
 create table withsplit as
 select
     *
 from
-    read_csv('tmp_strand.out');
+    read_csv('${TEMPDIR}/tmp_strand.out');
 
 create view sumsplit as
 select

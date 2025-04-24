@@ -18,7 +18,7 @@ DBGDIR = debug
 DBGEXE = $(DBGDIR)/$(EXE)
 DBGOBJS = $(addprefix $(DBGDIR)/, $(OBJS))  
 DBGCFLAGS = $(DEBUG_CXXFLAGS) -g -O0 -DDEBUG  -fno-tree-vectorize  -Wextra # -fsanitize=address
-DBGLDFLAGS = $(LDFLAGS)   #-fsanitize=address 
+DBGLDFLAGS = $(LDFLAGS)  
 #
 # Release build settings
 #
@@ -27,11 +27,11 @@ RELEXE = $(RELDIR)/$(EXE)
 RELOBJS = $(addprefix $(RELDIR)/, $(OBJS))
 RELCFLAGS = $(CXXFLAGS) -O3 -DNDEBUG
 
-.PHONY: all clean debug prep release remake
+.PHONY: all clean debug prep release remake test testall
 
 # Testing
 BATS=./test/bats/bin/bats
-TESTS=test/test.bats
+TESTS=test/basics.bats
 
 # Default build
 all: prep release debug
@@ -39,7 +39,8 @@ all: prep release debug
 test: $(DBGEXE) $(TESTS)
 	$(BATS) $(TESTS)
 
-
+testall: $(DBGEXE)
+	$(BATS) test/
 
 #
 # Debug rules
